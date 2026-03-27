@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "coffiq",
-    "slug": "coffiq",
+    "name": "caffiq",
+    "slug": "caffiq",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "coffiq",
+    "scheme": "caffiq",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
