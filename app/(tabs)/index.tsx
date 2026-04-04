@@ -1,35 +1,20 @@
 import { useEffect } from "react";
 
-import { getUsuarios, crearUsuario } from "@/backend/usuarios";
+import { getUsuarios } from "@/backend/usuarios";
 
 import { Image } from "expo-image";
-import { Platform, StyleSheet } from "react-native";
+import { StyleSheet } from "react-native";
 
 import { HelloWave } from "@/frontend/components/hello-wave";
 import ParallaxScrollView from "@/frontend/components/parallax-scroll-view";
 import { ThemedText } from "@/frontend/components/themed-text";
 import { ThemedView } from "@/frontend/components/themed-view";
-import { Link } from "expo-router";
 
 export default function HomeScreen() {
 
   useEffect(() => {
-    insertarUsuario();
     probarConexion();
   }, []);
-  console.log(process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY);
-  async function insertarUsuario() {
-    const { data, error } = await crearUsuario(
-      "Maycol",
-      "test@gmail.com"
-    );
-
-    if (error) {
-      console.log("Error insert:", error);
-    } else {
-      console.log("Insertado:", data);
-    }
-  }
 
   async function probarConexion() {
     const { data, error } = await getUsuarios();
@@ -68,8 +53,6 @@ export default function HomeScreen() {
           to see changes.
         </ThemedText>
       </ThemedView>
-
-      
 
     </ParallaxScrollView>
   );
