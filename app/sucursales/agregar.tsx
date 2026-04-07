@@ -1,11 +1,22 @@
+import { NavbarLateral } from "@/frontend/components/navbar-lateral";
+import * as ImagePicker from "expo-image-picker";
 import React, { useState } from "react";
 import {
-  View, Text, TextInput, TouchableOpacity,
-  StyleSheet, SafeAreaView, StatusBar,
-  ScrollView, Image, Modal, Alert,
+  Alert,
+  Image,
+  Modal,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import * as ImagePicker from "expo-image-picker";
-import { NavbarLateral } from "@/frontend/components/navbar-lateral";
+//imagenes
+import { crearSucursal } from "@/backend/Sucursales/Application/sucursalService";
+import { subirImagenCloudinary } from "@/frontend/services/cloudinary";
 
 export default function AgregarSucursal() {
   const [navbarVisible, setNavbarVisible] = useState(false);
@@ -22,7 +33,7 @@ export default function AgregarSucursal() {
     if (!permiso.granted) {
       Alert.alert(
         "Permiso requerido",
-        "Necesitamos acceso a tu galería para seleccionar una imagen."
+        "Necesitamos acceso a tu galería para seleccionar una imagen.",
       );
       return;
     }
@@ -45,7 +56,10 @@ export default function AgregarSucursal() {
   // ── Validar antes de mostrar modal ─────────────────────────
   const intentarRegistrar = () => {
     if (!nombre.trim()) {
-      Alert.alert("Campo requerido", "Por favor ingresa el nombre de la sucursal.");
+      Alert.alert(
+        "Campo requerido",
+        "Por favor ingresa el nombre de la sucursal.",
+      );
       return;
     }
     if (!direccion.trim()) {
@@ -56,25 +70,53 @@ export default function AgregarSucursal() {
   };
 
   // ── Confirmar y guardar ────────────────────────────────────
-  const confirmarRegistro = () => {
-    setModalConfirm(false);
-    // Aquí irá la llamada a Supabase cuando lo conectemos
-    console.log({ nombre, direccion, estado, imagen });
-    Alert.alert("Éxito", "Sucursal registrada correctamente.");
-    // Limpiar formulario
-    setNombre("");
-    setDireccion("");
-    setEstado("activo");
-    setImagen(null);
-  };
+  const confirmarRegistro = async () => {
+    try {
+      setModalConfirm(false);
 
+      let urlImagen = "";
+
+      // Subir imagen
+      if (imagen) {
+        urlImagen = await subirImagenCloudinary(imagen);
+      }
+
+      // Guardar sucursal
+      const { error } = await crearSucursal({
+        nombre,
+        direccion,
+        imagen: urlImagen,
+        estado_sucursal: estado === "activo", // conversión correcta
+      });
+
+      if (error) {
+        console.log("Error:", error);
+        Alert.alert("Error", "No se pudo guardar la sucursal");
+        return;
+      }
+
+      Alert.alert("Éxito", "Sucursal registrada correctamente 🔥");
+
+      //  limpiar
+      setNombre("");
+      setDireccion("");
+      setEstado("activo");
+      setImagen(null);
+    } catch (err) {
+      console.log(err);
+      Alert.alert("Error", "Ocurrió un error inesperado");
+    }
+  };
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0D5A52" />
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.menuBtn} onPress={() => setNavbarVisible(true)}>
+        <TouchableOpacity
+          style={styles.menuBtn}
+          onPress={() => setNavbarVisible(true)}
+        >
           <View style={styles.menuLine} />
           <View style={styles.menuLine} />
           <View style={styles.menuLine} />
@@ -85,7 +127,10 @@ export default function AgregarSucursal() {
         </View>
       </View>
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+      >
         <View style={styles.bgPattern} />
 
         <Text style={styles.pageTitle}>Registro de sucursal</Text>
@@ -115,12 +160,28 @@ export default function AgregarSucursal() {
         {/* Estado */}
         <View style={styles.estadoRow}>
           <Text style={styles.label}>Estado</Text>
-          <TouchableOpacity style={styles.radioOption} onPress={() => setEstado("activo")}>
-            <View style={[styles.radioCircle, estado === "activo" && styles.radioActivo]} />
+          <TouchableOpacity
+            style={styles.radioOption}
+            onPress={() => setEstado("activo")}
+          >
+            <View
+              style={[
+                styles.radioCircle,
+                estado === "activo" && styles.radioActivo,
+              ]}
+            />
             <Text style={styles.radioLabel}>Activo</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.radioOption} onPress={() => setEstado("suspendido")}>
-            <View style={[styles.radioCircle, estado === "suspendido" && styles.radioSuspendido]} />
+          <TouchableOpacity
+            style={styles.radioOption}
+            onPress={() => setEstado("suspendido")}
+          >
+            <View
+              style={[
+                styles.radioCircle,
+                estado === "suspendido" && styles.radioSuspendido,
+              ]}
+            />
             <Text style={styles.radioLabel}>Suspendido</Text>
           </TouchableOpacity>
         </View>
@@ -139,16 +200,24 @@ export default function AgregarSucursal() {
             </View>
           ) : (
             // ── Área de subida ──
-            <TouchableOpacity style={styles.uploadBox} onPress={seleccionarImagen}>
+            <TouchableOpacity
+              style={styles.uploadBox}
+              onPress={seleccionarImagen}
+            >
               <Text style={styles.uploadIcon}>⬆</Text>
               <Text style={styles.uploadText}>Coloque un archivo aquí</Text>
-              <Text style={styles.uploadSubtext}>Toca para abrir la galería</Text>
+              <Text style={styles.uploadSubtext}>
+                Toca para abrir la galería
+              </Text>
             </TouchableOpacity>
           )}
         </View>
 
         {/* Botón registrar */}
-        <TouchableOpacity style={styles.btnRegistrar} onPress={intentarRegistrar}>
+        <TouchableOpacity
+          style={styles.btnRegistrar}
+          onPress={intentarRegistrar}
+        >
           <Text style={styles.btnText}>Registrar</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -160,8 +229,8 @@ export default function AgregarSucursal() {
             <Text style={styles.modalTitle}>¿Confirmar registro?</Text>
             <Text style={styles.modalDesc}>
               Se registrará la sucursal{" "}
-              <Text style={styles.modalNombre}>"{nombre}"</Text>
-              {" "}y será visible para todos los usuarios.
+              <Text style={styles.modalNombre}>"{nombre}"</Text> y será visible
+              para todos los usuarios.
             </Text>
 
             {/* Mini resumen */}
@@ -182,7 +251,10 @@ export default function AgregarSucursal() {
               >
                 <Text style={styles.btnCancelarText}>Cancelar</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.btnConfirmar} onPress={confirmarRegistro}>
+              <TouchableOpacity
+                style={styles.btnConfirmar}
+                onPress={confirmarRegistro}
+              >
                 <Text style={styles.btnConfirmarText}>Confirmar</Text>
               </TouchableOpacity>
             </View>
@@ -190,7 +262,10 @@ export default function AgregarSucursal() {
         </View>
       </Modal>
 
-      <NavbarLateral visible={navbarVisible} onClose={() => setNavbarVisible(false)} />
+      <NavbarLateral
+        visible={navbarVisible}
+        onClose={() => setNavbarVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -207,23 +282,44 @@ const styles = StyleSheet.create({
     paddingTop: 50,
   },
   menuBtn: { gap: 5, padding: 4 },
-  menuLine: { width: 24, height: 2.5, backgroundColor: "#fff", borderRadius: 2 },
-  headerTitle: { fontSize: 20, fontWeight: "800", color: "#fff", letterSpacing: 3 },
+  menuLine: {
+    width: 24,
+    height: 2.5,
+    backgroundColor: "#fff",
+    borderRadius: 2,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#fff",
+    letterSpacing: 3,
+  },
   logoContainer: {
-    width: 36, height: 36, borderRadius: 18,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: "rgba(255,255,255,0.15)",
-    alignItems: "center", justifyContent: "center",
+    alignItems: "center",
+    justifyContent: "center",
   },
   logoEmoji: { fontSize: 20 },
   scroll: { flex: 1 },
   scrollContent: { padding: 20, paddingBottom: 40 },
   bgPattern: {
-    position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
-    opacity: 0.06, backgroundColor: "#6FA58B",
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0.06,
+    backgroundColor: "#6FA58B",
   },
   pageTitle: {
-    fontSize: 24, fontWeight: "700", color: "#2C1819",
-    marginBottom: 24, fontStyle: "italic",
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#2C1819",
+    marginBottom: 24,
+    fontStyle: "italic",
   },
   inputGroup: { marginBottom: 16 },
   label: { fontSize: 14, color: "#2C1819", marginBottom: 6, fontWeight: "500" },
@@ -243,8 +339,11 @@ const styles = StyleSheet.create({
   },
   radioOption: { flexDirection: "row", alignItems: "center", gap: 6 },
   radioCircle: {
-    width: 18, height: 18, borderRadius: 9,
-    borderWidth: 2, borderColor: "#0D5A52",
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 2,
+    borderColor: "#0D5A52",
     backgroundColor: "transparent",
   },
   radioActivo: { backgroundColor: "#541A1A", borderColor: "#6FA58B" },
@@ -267,14 +366,20 @@ const styles = StyleSheet.create({
   // Preview imagen
   previewContainer: { position: "relative" },
   previewImage: {
-    width: "100%", height: 180,
+    width: "100%",
+    height: 180,
     borderRadius: 10,
   },
   removeBtn: {
-    position: "absolute", top: 8, left: 8,
+    position: "absolute",
+    top: 8,
+    left: 8,
     backgroundColor: "rgba(0,0,0,0.6)",
-    width: 30, height: 30, borderRadius: 15,
-    alignItems: "center", justifyContent: "center",
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
   },
   removeBtnText: { color: "#fff", fontSize: 14, fontWeight: "700" },
 
@@ -290,8 +395,10 @@ const styles = StyleSheet.create({
 
   // Modal
   modalOverlay: {
-    flex: 1, backgroundColor: "rgba(0,0,0,0.5)",
-    alignItems: "center", justifyContent: "center",
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   modalBox: {
     backgroundColor: "#fff",
@@ -301,12 +408,18 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   modalTitle: {
-    fontSize: 18, fontWeight: "700",
-    color: "#0D5A52", textAlign: "center", marginBottom: 10,
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#0D5A52",
+    textAlign: "center",
+    marginBottom: 10,
   },
   modalDesc: {
-    fontSize: 14, color: "#555",
-    textAlign: "center", marginBottom: 16, lineHeight: 20,
+    fontSize: 14,
+    color: "#555",
+    textAlign: "center",
+    marginBottom: 16,
+    lineHeight: 20,
   },
   modalNombre: { fontWeight: "700", color: "#2C1819" },
   modalResumen: {
@@ -319,14 +432,18 @@ const styles = StyleSheet.create({
   resumenItem: { fontSize: 13, color: "#2C1819" },
   modalBtns: { flexDirection: "row", gap: 10 },
   btnCancelar: {
-    flex: 1, backgroundColor: "#6FA58B",
-    borderRadius: 20, paddingVertical: 12,
+    flex: 1,
+    backgroundColor: "#6FA58B",
+    borderRadius: 20,
+    paddingVertical: 12,
     alignItems: "center",
   },
   btnCancelarText: { color: "#fff", fontWeight: "700" },
   btnConfirmar: {
-    flex: 1, backgroundColor: "#0D5A52",
-    borderRadius: 20, paddingVertical: 12,
+    flex: 1,
+    backgroundColor: "#0D5A52",
+    borderRadius: 20,
+    paddingVertical: 12,
     alignItems: "center",
   },
   btnConfirmarText: { color: "#fff", fontWeight: "700" },
