@@ -9,12 +9,20 @@ import { HelloWave } from "@/frontend/components/hello-wave";
 import ParallaxScrollView from "@/frontend/components/parallax-scroll-view";
 import { ThemedText } from "@/frontend/components/themed-text";
 import { ThemedView } from "@/frontend/components/themed-view";
+// imagenes
+import { useState } from "react";
+import { Button, Image as RNImage } from "react-native";
+
+import { subirImagenCloudinary } from "@/frontend/services/cloudinary";
+import { seleccionarImagen } from "@/frontend/services/imagePicker";
 
 // sucursales
 import { useRouter } from "expo-router";
 import { TouchableOpacity, Text} from "react-native"; 
 export default function HomeScreen() {
   const router = useRouter();
+  const [url, setUrl] = useState<string | null>(null);
+
   useEffect(() => {
     probarConexion();
   }, []);
@@ -29,6 +37,21 @@ export default function HomeScreen() {
     }
   }
 
+  const handleSubirImagen = async () => {
+    try {
+      const uri = await seleccionarImagen();
+      if (!uri) return;
+
+      const urlCloud = await subirImagenCloudinary(uri);
+
+      console.log("URL CLOUDINARY:", urlCloud);
+
+      setUrl(urlCloud);
+    } catch (error) {
+      console.log("ERROR:", error);
+    }
+  };
+
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: "#A1CEDC", dark: "#1D3D47" }}
@@ -40,9 +63,7 @@ export default function HomeScreen() {
       }
     >
       <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">
-          Caffiq app funcionando 🚀
-        </ThemedText>
+        <ThemedText type="title">Caffiq app funcionando 🚀</ThemedText>
         <HelloWave />
       </ThemedView>
 
@@ -50,9 +71,7 @@ export default function HomeScreen() {
         <ThemedText type="subtitle">Step 1: Try it</ThemedText>
         <ThemedText>
           Edit{" "}
-          <ThemedText type="defaultSemiBold">
-            app/(tabs)/index.tsx
-          </ThemedText>{" "}
+          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText>{" "}
           to see changes.
         </ThemedText>
       </ThemedView>
