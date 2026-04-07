@@ -10,8 +10,11 @@ import ParallaxScrollView from "@/frontend/components/parallax-scroll-view";
 import { ThemedText } from "@/frontend/components/themed-text";
 import { ThemedView } from "@/frontend/components/themed-view";
 
+// sucursales
+import { useRouter } from "expo-router";
+import { TouchableOpacity, Text} from "react-native"; 
 export default function HomeScreen() {
-
+  const router = useRouter();
   useEffect(() => {
     probarConexion();
   }, []);
@@ -54,6 +57,14 @@ export default function HomeScreen() {
         </ThemedText>
       </ThemedView>
 
+      <ThemedView style={styles.stepContainer}>
+        <TouchableOpacity
+          style={styles.botonCafeterias}
+          onPress={() => router.push("/(tabs)/cafeterias" as any)}
+        >
+          <Text style={styles.botonTexto}>☕ Ver Cafeterías</Text>
+        </TouchableOpacity>
+      </ThemedView>
     </ParallaxScrollView>
   );
 }
@@ -72,5 +83,19 @@ const styles = StyleSheet.create({
     height: 178,
     width: 290,
     position: "absolute",
+  },
+    botonCafeterias: {
+    backgroundColor: "#1a5c4a",
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 8,
+  },
+  botonTexto: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+    letterSpacing: 1,
   },
 });
