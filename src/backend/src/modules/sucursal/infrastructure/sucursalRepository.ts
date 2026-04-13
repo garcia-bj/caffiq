@@ -1,5 +1,5 @@
-import { supabase } from "../../supabase";
-import { Sucursal } from "../Domain/sucursal";
+import { supabase } from "../../../../supabase";
+import { Sucursal } from "../domain/sucursal";
 
 export const getSucursalesDB = async () => {
   const { data, error } = await supabase.from("Sucursal").select("*");

@@ -1,8 +1,8 @@
-import { Sucursal } from "../Domain/sucursal";
+import { Sucursal } from "../domain/sucursal";
 import {
     addSucursalDB,
     getSucursalesDB,
-} from "../Infrastructure/sucursalRepository";
+} from "../infrastructure/sucursalRepository";
 
 export const crearSucursal = async (sucursal: Sucursal) => {
   return await addSucursalDB(sucursal);

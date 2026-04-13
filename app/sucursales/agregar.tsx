@@ -2,20 +2,20 @@ import { NavbarLateral } from "@/frontend/components/navbar-lateral";
 import * as ImagePicker from "expo-image-picker";
 import React, { useState } from "react";
 import {
-  Alert,
-  Image,
-  Modal,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    Image,
+    Modal,
+    SafeAreaView,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 //imagenes
-import { crearSucursal } from "@/backend/Sucursales/Application/sucursalService";
+import { crearSucursalAPI } from "@/frontend/services/sucursalService";
 import { subirImagenCloudinary } from "@/frontend/services/cloudinary";
 
 export default function AgregarSucursal() {
@@ -82,7 +82,7 @@ export default function AgregarSucursal() {
       }
 
       // Guardar sucursal
-      const { error } = await crearSucursal({
+      const { error } = await crearSucursalAPI({
         nombre,
         direccion,
         imagen: urlImagen,
