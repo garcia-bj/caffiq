@@ -1,8 +1,8 @@
-import { API_URL } from "./api";
+/*import { api } from "./api";
 
 export const crearSucursalAPI = async (data: any) => {
   try {
-    const response = await fetch(`${API_URL}/sucursales`, {
+    const response = await fetch(`${api}/sucursales`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -16,4 +16,12 @@ export const crearSucursalAPI = async (data: any) => {
     console.log("Error creando sucursal:", error);
     return { error };
   }
+};*/
+import { api } from "./api";
+
+export const crearSucursalAPI = async (data: any) => {
+  return await api("/api/sucursales", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
 };

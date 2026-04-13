@@ -24,6 +24,6 @@ app.use("/api/sucursales", sucursalRoutes);
 const PORT = 3000;
 
 // 🔹 Levantar servidor
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0",() => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });
