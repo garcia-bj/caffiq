@@ -1,8 +1,8 @@
+import { Caffiq } from "@/frontend/constants/theme";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Caffiq } from "@/frontend/constants/theme";
 
 export default function WelcomeScreen() {
   return (
@@ -21,9 +21,9 @@ export default function WelcomeScreen() {
         {/* Decoracion superior */}
         <View style={styles.decorLine} />
 
-        <Text style={styles.title}>Lets, get some{"\n"}coffee</Text>
+        <Text style={styles.title}>Vamos por un{"\n"}cafe</Text>
         <Text style={styles.subtitle}>
-          The best grain, the finest roast,{"\n"}the powerful flavor.
+          El mejor grano, el cafe mas fino,{"\n"}el sabor mas potente.
         </Text>
 
         <TouchableOpacity
@@ -31,7 +31,7 @@ export default function WelcomeScreen() {
           activeOpacity={0.85}
           onPress={() => router.push("/(auth)/login")}
         >
-          <Text style={styles.buttonText}>Get Started</Text>
+          <Text style={styles.buttonText}>Comenzar</Text>
         </TouchableOpacity>
       </SafeAreaView>
     </View>
