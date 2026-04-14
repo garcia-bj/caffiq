@@ -1,29 +1,39 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
-
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+// ─── Paleta Caffiq ────────────────────────────────────────────────────────────
+export const Caffiq = {
+  white:       '#FFFFFF',
+  mutedTeal:   '#6FA58B',
+  pineTeal:    '#0D5A52',
+  bordeaux:    '#541A1A',
+  coffeBean:   '#2C1819',
+
+  // Derivados de uso frecuente
+  inputBg:     '#F2F2F2',
+  inputBorder: '#E0E0E0',
+  placeholder: '#9E9E9E',
+  textDark:    '#1A1A1A',
+  textMuted:   '#6B6B6B',
+  error:       '#D32F2F',
+  success:     '#388E3C',
+};
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+    text:           Caffiq.textDark,
+    background:     Caffiq.white,
+    tint:           Caffiq.pineTeal,
+    icon:           Caffiq.textMuted,
+    tabIconDefault: Caffiq.textMuted,
+    tabIconSelected: Caffiq.pineTeal,
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
+    text:           '#ECEDEE',
+    background:     Caffiq.coffeBean,
+    tint:           Caffiq.mutedTeal,
+    icon:           '#9BA1A6',
     tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    tabIconSelected: Caffiq.mutedTeal,
   },
 };
 

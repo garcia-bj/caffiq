@@ -1,93 +1,43 @@
-import { useEffect } from "react";
-
-import { getUsuarios, crearUsuario } from "@/backend/usuarios";
-
-import { Image } from "expo-image";
-import { Platform, StyleSheet } from "react-native";
-
-import { HelloWave } from "@/frontend/components/hello-wave";
-import ParallaxScrollView from "@/frontend/components/parallax-scroll-view";
-import { ThemedText } from "@/frontend/components/themed-text";
-import { ThemedView } from "@/frontend/components/themed-view";
-import { Link } from "expo-router";
+import { StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Caffiq } from "@/frontend/constants/theme";
+import { useAuth } from "@/frontend/context/AuthContext";
 
 export default function HomeScreen() {
-
-  useEffect(() => {
-    insertarUsuario();
-    probarConexion();
-  }, []);
-  console.log(process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY);
-  async function insertarUsuario() {
-    const { data, error } = await crearUsuario(
-      "Maycol",
-      "test@gmail.com"
-    );
-
-    if (error) {
-      console.log("Error insert:", error);
-    } else {
-      console.log("Insertado:", data);
-    }
-  }
-
-  async function probarConexion() {
-    const { data, error } = await getUsuarios();
-
-    if (error) {
-      console.log("Error:", error);
-    } else {
-      console.log("Datos:", data);
-    }
-  }
+  const { usuario } = useAuth();
 
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: "#A1CEDC", dark: "#1D3D47" }}
-      headerImage={
-        <Image
-          source={require("../../assets/images/partial-react-logo.png")}
-          style={styles.reactLogo}
-        />
-      }
-    >
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">
-          Caffiq app funcionando 🚀
-        </ThemedText>
-        <HelloWave />
-      </ThemedView>
-
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit{" "}
-          <ThemedText type="defaultSemiBold">
-            app/(tabs)/index.tsx
-          </ThemedText>{" "}
-          to see changes.
-        </ThemedText>
-      </ThemedView>
-
-      
-
-    </ParallaxScrollView>
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.container}>
+        <Text style={styles.greeting}>
+          Hola, {usuario?.nom_completo ?? "Caffiq"} ☕
+        </Text>
+        <Text style={styles.sub}>
+          Bienvenido a Caffiq
+        </Text>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: "row",
+  safe: { flex: 1, backgroundColor: Caffiq.white },
+  container: {
+    flex: 1,
     alignItems: "center",
-    gap: 8,
+    justifyContent: "center",
+    paddingHorizontal: 24,
   },
-  stepContainer: {
-    gap: 8,
+  greeting: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: Caffiq.coffeBean,
     marginBottom: 8,
+    textAlign: "center",
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    position: "absolute",
+  sub: {
+    fontSize: 15,
+    color: Caffiq.textMuted,
+    textAlign: "center",
   },
 });

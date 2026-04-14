@@ -1,0 +1,392 @@
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import { useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Caffiq } from "@/frontend/constants/theme";
+import { authService } from "@/frontend/services/auth.service";
+
+type Rol = "cliente" | "admin";
+
+function BackgroundPattern() {
+  const circles = [
+    { top: -20,  right: -30, size: 130, opacity: 0.04 },
+    { top: 100,  left: -40,  size: 110, opacity: 0.03 },
+    { bottom: 150, right: -20, size: 100, opacity: 0.04 },
+    { bottom: 40,  left: 30,  size: 80,  opacity: 0.03 },
+  ] as const;
+  return (
+    <>
+      {circles.map(({ size, opacity, ...pos }, i) => (
+        <View
+          key={i}
+          style={[
+            styles.patternCircle,
+            { width: size, height: size, borderRadius: size / 2, opacity, ...(pos as object) },
+          ]}
+        />
+      ))}
+    </>
+  );
+}
+
+interface FieldProps {
+  icon: keyof typeof Ionicons.glyphMap;
+  placeholder: string;
+  value: string;
+  onChange: (v: string) => void;
+  secure?: boolean;
+  keyboardType?: "default" | "phone-pad" | "email-address";
+  autoCapitalize?: "none" | "words" | "sentences";
+  multiline?: boolean;
+}
+function Field({ icon, placeholder, value, onChange, secure = false, keyboardType = "default", autoCapitalize = "none", multiline = false }: FieldProps) {
+  const [show, setShow] = useState(false);
+  return (
+    <View style={[styles.inputWrapper, multiline && styles.inputWrapperMulti]}>
+      <Ionicons name={icon} size={20} color={Caffiq.placeholder} style={[styles.inputIcon, multiline && { alignSelf: "flex-start", marginTop: 14 }]} />
+      <TextInput
+        style={[styles.input, { flex: 1 }, multiline && styles.inputMulti]}
+        placeholder={placeholder}
+        placeholderTextColor={Caffiq.placeholder}
+        value={value}
+        onChangeText={onChange}
+        secureTextEntry={secure && !show}
+        keyboardType={keyboardType}
+        autoCapitalize={autoCapitalize}
+        autoCorrect={false}
+        multiline={multiline}
+        numberOfLines={multiline ? 3 : 1}
+      />
+      {secure && (
+        <TouchableOpacity onPress={() => setShow((v) => !v)} style={styles.eyeIcon}>
+          <Ionicons name={show ? "eye-outline" : "eye-off-outline"} size={20} color={Caffiq.placeholder} />
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
+// ─── Separador de sección ─────────────────────────────────────────────────────
+function SectionLabel({ icon, label }: { icon: keyof typeof Ionicons.glyphMap; label: string }) {
+  return (
+    <View style={styles.sectionLabel}>
+      <Ionicons name={icon} size={15} color={Caffiq.pineTeal} />
+      <Text style={styles.sectionLabelText}>{label}</Text>
+      <View style={styles.sectionLine} />
+    </View>
+  );
+}
+
+export default function RegisterScreen() {
+  const [rol, setRol]               = useState<Rol>("cliente");
+
+  // Datos personales
+  const [nomCompleto, setNomCompleto] = useState("");
+  const [nomUsuario, setNomUsuario]   = useState("");
+  const [telefono, setTelefono]       = useState("");
+  const [password, setPassword]       = useState("");
+  const [confirmar, setConfirmar]     = useState("");
+
+  // Datos de cafetería (solo admin)
+  const [nomCafeteria, setNomCafeteria]     = useState("");
+  const [direccion, setDireccion]           = useState("");
+  const [descripcion, setDescripcion]       = useState("");
+  const [horarioApertura, setHorarioApertura] = useState("");
+  const [horarioCierre, setHorarioCierre]   = useState("");
+  const [ciudadCafeteria, setCiudadCafeteria] = useState("");
+
+  const [loading, setLoading] = useState(false);
+
+  const validarCampos = (): string | null => {
+    if (!nomCompleto || !nomUsuario || !telefono || !password || !confirmar)
+      return "Completa todos los campos personales.";
+    if (password !== confirmar)
+      return "Las contraseñas no coinciden.";
+    if (password.length < 6)
+      return "La contraseña debe tener al menos 6 caracteres.";
+    if (rol === "admin") {
+      if (!nomCafeteria || !direccion || !ciudadCafeteria)
+        return "Completa los datos de tu cafetería.";
+      if (horarioApertura && !/^\d{2}:\d{2}$/.test(horarioApertura))
+        return "El horario de apertura debe ser HH:MM (ej. 08:00).";
+      if (horarioCierre && !/^\d{2}:\d{2}$/.test(horarioCierre))
+        return "El horario de cierre debe ser HH:MM (ej. 22:00).";
+    }
+    return null;
+  };
+
+  const handleRegister = async () => {
+    const error = validarCampos();
+    if (error) {
+      Alert.alert("Campos incompletos", error);
+      return;
+    }
+    try {
+      setLoading(true);
+      const payload: Parameters<typeof authService.register>[0] = {
+        nom_completo: nomCompleto.trim(),
+        nom_usuario:  nomUsuario.trim(),
+        num_telefono: telefono.trim(),
+        password,
+        rol,
+        ...(rol === "admin" && {
+          cafeteria: {
+            nom_cafeteria: nomCafeteria.trim(),
+            direccion:     direccion.trim(),
+            ciudad:        ciudadCafeteria.trim(),
+            descripcion:   descripcion.trim() || undefined,
+            horario_apertura: horarioApertura || undefined,
+            horario_cierre:   horarioCierre   || undefined,
+          },
+        }),
+      };
+
+      const { usuario_id, mensaje } = await authService.register(payload);
+
+      Alert.alert("¡Cuenta creada!", mensaje, [
+        {
+          text: "Verificar número",
+          onPress: () =>
+            router.replace({
+              pathname: "/(auth)/verify-phone",
+              params: { usuario_id, telefono: telefono.trim() },
+            }),
+        },
+      ]);
+    } catch (e: unknown) {
+      Alert.alert("Error", e instanceof Error ? e.message : "Error al registrarse");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.safe}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <View style={styles.container}>
+            <BackgroundPattern />
+
+            {/* ── Logo ──────────────────────────────────────────────── */}
+            <View style={styles.logoWrapper}>
+              <View style={styles.logoCircle}>
+                <Image source={require("../../assets/images/icon.png")} style={styles.logoImage} />
+              </View>
+              <Text style={styles.logoText}>CAFFIQ</Text>
+            </View>
+
+            {/* ── Selector de rol ───────────────────────────────────── */}
+            <View style={styles.rolSelector}>
+              {(["cliente", "admin"] as Rol[]).map((r) => (
+                <TouchableOpacity
+                  key={r}
+                  style={[styles.rolBtn, rol === r && styles.rolBtnActive]}
+                  onPress={() => setRol(r)}
+                >
+                  <Ionicons
+                    name={r === "cliente" ? "person-outline" : "storefront-outline"}
+                    size={16}
+                    color={rol === r ? Caffiq.white : Caffiq.pineTeal}
+                  />
+                  <Text style={[styles.rolBtnText, rol === r && styles.rolBtnTextActive]}>
+                    {r === "cliente" ? "Soy Cliente" : "Soy Administrador"}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* ── Datos personales ──────────────────────────────────── */}
+            <View style={styles.form}>
+              <SectionLabel icon="person-outline" label="Datos personales" />
+
+              <Field icon="person-circle-outline" placeholder="Nombre completo"         value={nomCompleto} onChange={setNomCompleto} autoCapitalize="words" />
+              <Field icon="at-outline"            placeholder="Nombre de usuario"        value={nomUsuario}  onChange={setNomUsuario} />
+              <Field icon="call-outline"          placeholder="WhatsApp (+521XXXXXXXXXX)" value={telefono}    onChange={setTelefono}   keyboardType="phone-pad" />
+              <Field icon="lock-closed-outline"   placeholder="Contraseña"               value={password}    onChange={setPassword}   secure />
+              <Field icon="shield-checkmark-outline" placeholder="Confirmar contraseña"  value={confirmar}   onChange={setConfirmar}  secure />
+
+              {/* ── Datos de cafetería (solo admin) ─────────────────── */}
+              {rol === "admin" && (
+                <>
+                  <SectionLabel icon="storefront-outline" label="Datos de tu cafetería" />
+
+                  <Field icon="cafe-outline"           placeholder="Nombre de la cafetería"   value={nomCafeteria}    onChange={setNomCafeteria}    autoCapitalize="words" />
+                  <Field icon="location-outline"       placeholder="Dirección (calle y número)" value={direccion}      onChange={setDireccion}      autoCapitalize="sentences" />
+                  <Field icon="map-outline"            placeholder="Ciudad"                    value={ciudadCafeteria} onChange={setCiudadCafeteria} autoCapitalize="words" />
+                  <Field icon="document-text-outline"  placeholder="Descripción breve (opcional)" value={descripcion}  onChange={setDescripcion}   autoCapitalize="sentences" multiline />
+
+                  {/* Horario */}
+                  <View style={styles.horarioRow}>
+                    <View style={[styles.inputWrapper, { flex: 1 }]}>
+                      <Ionicons name="time-outline" size={20} color={Caffiq.placeholder} style={styles.inputIcon} />
+                      <TextInput
+                        style={[styles.input, { flex: 1 }]}
+                        placeholder="Apertura (08:00)"
+                        placeholderTextColor={Caffiq.placeholder}
+                        value={horarioApertura}
+                        onChangeText={setHorarioApertura}
+                        keyboardType="numbers-and-punctuation"
+                      />
+                    </View>
+                    <View style={[styles.inputWrapper, { flex: 1 }]}>
+                      <Ionicons name="time-outline" size={20} color={Caffiq.placeholder} style={styles.inputIcon} />
+                      <TextInput
+                        style={[styles.input, { flex: 1 }]}
+                        placeholder="Cierre (22:00)"
+                        placeholderTextColor={Caffiq.placeholder}
+                        value={horarioCierre}
+                        onChangeText={setHorarioCierre}
+                        keyboardType="numbers-and-punctuation"
+                      />
+                    </View>
+                  </View>
+                </>
+              )}
+
+              {/* Boton registrar */}
+              <TouchableOpacity style={styles.registerBtn} activeOpacity={0.85} onPress={handleRegister} disabled={loading}>
+                {loading ? (
+                  <ActivityIndicator color={Caffiq.white} />
+                ) : (
+                  <View style={styles.registerContent}>
+                    <Text style={styles.registerText}>Crear cuenta</Text>
+                    <View style={styles.registerIcon}>
+                      <Ionicons name="cafe" size={18} color={Caffiq.white} />
+                    </View>
+                  </View>
+                )}
+              </TouchableOpacity>
+
+              {/* Google */}
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>o</Text>
+                <View style={styles.dividerLine} />
+              </View>
+              <TouchableOpacity style={styles.googleBtn} activeOpacity={0.85} onPress={() => Alert.alert("Próximamente", "Google en desarrollo.")}>
+                <Text style={styles.googleG}>G</Text>
+                <Text style={styles.googleText}>Continuar con Google</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* ── Footer ────────────────────────────────────────────── */}
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>¿Ya tienes cuenta? </Text>
+              <TouchableOpacity onPress={() => router.replace("/(auth)/login")}>
+                <Text style={styles.footerLink}>Iniciar sesión →</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: Caffiq.white },
+  scroll: { flexGrow: 1 },
+  container: {
+    flex: 1,
+    backgroundColor: Caffiq.white,
+    paddingHorizontal: 28,
+    paddingTop: 28,
+    paddingBottom: 24,
+    overflow: "hidden",
+  },
+  patternCircle: { position: "absolute", backgroundColor: Caffiq.pineTeal },
+
+  // Logo
+  logoWrapper: { alignItems: "center", marginBottom: 24 },
+  logoCircle: {
+    width: 80, height: 80, borderRadius: 40,
+    borderWidth: 3, borderColor: Caffiq.pineTeal,
+    backgroundColor: Caffiq.white,
+    alignItems: "center", justifyContent: "center",
+    overflow: "hidden",
+    shadowColor: Caffiq.pineTeal,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2, shadowRadius: 8, elevation: 5,
+  },
+  logoImage: { width: 60, height: 60, borderRadius: 30 },
+  logoText: { marginTop: 8, fontSize: 18, fontWeight: "800", color: Caffiq.coffeBean, letterSpacing: 4 },
+
+  // Rol
+  rolSelector: {
+    flexDirection: "row",
+    backgroundColor: Caffiq.inputBg,
+    borderRadius: 12, padding: 4, marginBottom: 16,
+  },
+  rolBtn: {
+    flex: 1, flexDirection: "row",
+    alignItems: "center", justifyContent: "center",
+    gap: 6, paddingVertical: 10, borderRadius: 10,
+  },
+  rolBtnActive: { backgroundColor: Caffiq.pineTeal },
+  rolBtnText: { fontSize: 13, fontWeight: "600", color: Caffiq.pineTeal },
+  rolBtnTextActive: { color: Caffiq.white },
+
+  // Section label
+  sectionLabel: {
+    flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4, marginBottom: -2,
+  },
+  sectionLabelText: {
+    fontSize: 12, fontWeight: "700", color: Caffiq.pineTeal, textTransform: "uppercase", letterSpacing: 0.8,
+  },
+  sectionLine: { flex: 1, height: 1, backgroundColor: Caffiq.inputBorder },
+
+  // Form
+  form: { gap: 12 },
+  inputWrapper: {
+    flexDirection: "row", alignItems: "center",
+    backgroundColor: Caffiq.inputBg,
+    borderRadius: 12, borderWidth: 1, borderColor: Caffiq.inputBorder,
+    paddingHorizontal: 14, height: 52,
+  },
+  inputWrapperMulti: { height: "auto", paddingVertical: 10, alignItems: "flex-start" },
+  inputIcon: { marginRight: 10 },
+  input: { flex: 1, fontSize: 15, color: Caffiq.textDark },
+  inputMulti: { minHeight: 64, textAlignVertical: "top" },
+  eyeIcon: { padding: 4 },
+
+  horarioRow: { flexDirection: "row", gap: 10 },
+
+  registerBtn: {
+    backgroundColor: Caffiq.pineTeal, borderRadius: 12,
+    paddingVertical: 15, alignItems: "center", marginTop: 4,
+    shadowColor: Caffiq.pineTeal,
+    shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 8, elevation: 5,
+  },
+  registerContent: { flexDirection: "row", alignItems: "center", gap: 10 },
+  registerText: { color: Caffiq.white, fontSize: 16, fontWeight: "700" },
+  registerIcon: { backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 8, padding: 4 },
+
+  divider: { flexDirection: "row", alignItems: "center", gap: 10, marginVertical: 2 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: Caffiq.inputBorder },
+  dividerText: { fontSize: 13, color: Caffiq.placeholder, fontWeight: "500" },
+
+  googleBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10,
+    backgroundColor: Caffiq.white, borderRadius: 12,
+    borderWidth: 1.5, borderColor: Caffiq.inputBorder, paddingVertical: 14,
+  },
+  googleG: { fontSize: 17, fontWeight: "800", color: "#4285F4" },
+  googleText: { fontSize: 15, fontWeight: "600", color: Caffiq.textDark },
+
+  footer: { flexDirection: "row", justifyContent: "center", alignItems: "center", marginTop: 24 },
+  footerText: { fontSize: 14, color: Caffiq.textMuted },
+  footerLink: { fontSize: 14, color: Caffiq.pineTeal, fontWeight: "700" },
+});
