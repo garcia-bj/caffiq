@@ -1,52 +1,70 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, SafeAreaView, StatusBar,
-  ScrollView, Image, Alert, Modal,
+  ScrollView, Image, Alert, Modal, ActivityIndicator,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { NavbarLateral } from "@/frontend/components/navbar-lateral";
-
-const SUCURSALES = [
-  { id: 1, nombre: "Martinez", direccion: "Avn. America", imagen: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=600" },
-  { id: 2, nombre: "The Coffee Club", direccion: "Calle Sucre #456", imagen: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600" },
-  { id: 3, nombre: "Juan Valdez Cafe", direccion: "Plaza Principal #789", imagen: "https://images.unsplash.com/photo-1445116572660-236099ec97a0?w=600" },
-];
+import { listarSucursalesAPI, modificarSucursalAPI } from "@/frontend/services/sucursalService";
+type Sucursal = {
+  id_sucursal: string;
+  nombre: string;
+  direccion: string;
+  imagen: string;
+  estado_sucursal: boolean;
+};
 
 export default function ModificarSucursal() {
   const [navbarVisible, setNavbarVisible] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [seleccionada, setSeleccionada] = useState<typeof SUCURSALES[0] | null>(null);
+  const [sucursales, setSucursales] = useState<Sucursal[]>([]); 
+  const [cargandoLista, setCargandoLista] = useState(true);     
+  const [cargandoGuardar, setCargandoGuardar] = useState(false); 
+  const [seleccionada, setSeleccionada] = useState<Sucursal | null>(null);
   const [nombre, setNombre] = useState("");
   const [direccion, setDireccion] = useState("");
-  const [estado, setEstado] = useState<"activo" | "suspendido">("activo");
   const [imagenActual, setImagenActual] = useState<string | null>(null);
   const [modalConfirm, setModalConfirm] = useState(false);
+  const [estado, setEstado] = useState<"activo" | "suspendido">("activo");
+  
+  useEffect(() => {
+    cargarSucursales();
+  }, []);
 
-  const seleccionar = (s: typeof SUCURSALES[0]) => {
+  const cargarSucursales = async () => {
+    setCargandoLista(true);
+    try {
+      const result = await listarSucursalesAPI();
+      setSucursales(result.data || []);
+    } catch (error) {
+      Alert.alert("Error", "No se pudieron cargar las sucursales");
+    } finally {
+      setCargandoLista(false);
+    }
+  };
+
+  const seleccionar = (s: Sucursal) => { // 👈 tipo Sucursal
     setSeleccionada(s);
     setNombre(s.nombre);
     setDireccion(s.direccion);
-    setImagenActual(s.imagen); // ← carga la imagen original
+    setImagenActual(s.imagen);
     setDropdownOpen(false);
   };
 
   // ── Cambiar imagen desde galería ──────────────────────────
   const cambiarImagen = async () => {
     const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
-
     if (!permiso.granted) {
       Alert.alert("Permiso requerido", "Necesitamos acceso a tu galería.");
       return;
     }
-
     const resultado = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [16, 9],
       quality: 0.8,
     });
-
     if (!resultado.canceled) {
       setImagenActual(resultado.assets[0].uri);
     }
@@ -69,15 +87,44 @@ export default function ModificarSucursal() {
       Alert.alert("Campo requerido", "La dirección no puede estar vacía.");
       return;
     }
+    if (!imagenActual) {
+      Alert.alert("Campo requerido", "La imagen no puede estar vacía.");
+      return;
+    }
     setModalConfirm(true);
   };
 
   // ── Confirmar guardado ────────────────────────────────────
-  const confirmarGuardar = () => {
-    setModalConfirm(false);
-    // Aquí irá la llamada a Supabase
-    console.log({ nombre, direccion, estado, imagenActual });
-    Alert.alert("Éxito", "Sucursal actualizada correctamente.");
+    const confirmarGuardar = async () => {
+    if (!seleccionada) return;
+    setCargandoGuardar(true);
+    try {
+      await modificarSucursalAPI(seleccionada.id_sucursal, {
+        nombre,
+        direccion,
+        imagen: imagenActual!,
+      });
+      setModalConfirm(false);
+      Alert.alert("✅ Éxito", "Sucursal actualizada correctamente.");
+      // Actualiza la lista local con los nuevos datos
+      setSucursales((prev) =>
+        prev.map((s) =>
+          s.id_sucursal === seleccionada.id_sucursal
+            ? { ...s, nombre, direccion, imagen: imagenActual! }
+            : s
+        )
+      );
+      // Limpia el formulario
+      setSeleccionada(null);
+      setNombre("");
+      setDireccion("");
+      setImagenActual(null);
+    } catch (error: any) {
+      setModalConfirm(false);
+      Alert.alert("Error", error.message || "No se pudo actualizar la sucursal");
+    } finally {
+      setCargandoGuardar(false);
+    }
   };
 
   return (
@@ -98,33 +145,36 @@ export default function ModificarSucursal() {
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
         <Text style={styles.pageTitle}>Modificar sucursal</Text>
+        {/* Spinner mientras carga */}
+          {cargandoLista ? (
+            <ActivityIndicator size="large" color="#0D5A52" style={{ marginVertical: 20 }} />
+          ) : (
+            <View style={styles.inputGroup}>
+              <TouchableOpacity
+                style={styles.dropdown}
+                onPress={() => setDropdownOpen(!dropdownOpen)}
+              >
+                <Text style={styles.dropdownText}>
+                  {seleccionada ? seleccionada.nombre : "Seleccione una sucursal"}
+                </Text>
+                <Text style={styles.dropdownChevron}>{dropdownOpen ? "▲" : "▼"}</Text>
+              </TouchableOpacity>
 
-        {/* Dropdown */}
-        <View style={styles.inputGroup}>
-          <TouchableOpacity
-            style={styles.dropdown}
-            onPress={() => setDropdownOpen(!dropdownOpen)}
-          >
-            <Text style={styles.dropdownText}>
-              {seleccionada ? seleccionada.nombre : "Seleccione una sucursal"}
-            </Text>
-            <Text style={styles.dropdownChevron}>{dropdownOpen ? "▲" : "▼"}</Text>
-          </TouchableOpacity>
-
-          {dropdownOpen && (
-            <View style={styles.dropdownList}>
-              {SUCURSALES.map((s) => (
-                <TouchableOpacity
-                  key={s.id}
-                  style={styles.dropdownItem}
-                  onPress={() => seleccionar(s)}
-                >
-                  <Text style={styles.dropdownItemText}>{s.nombre}</Text>
-                </TouchableOpacity>
-              ))}
+              {dropdownOpen && (
+                <View style={styles.dropdownList}>
+                  {sucursales.map((s) => (
+                    <TouchableOpacity
+                      key={s.id_sucursal} // 👈 usa id_sucursal
+                      style={styles.dropdownItem}
+                      onPress={() => seleccionar(s)}
+                    >
+                      <Text style={styles.dropdownItemText}>{s.nombre}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
             </View>
           )}
-        </View>
 
         {/* Nombre */}
         <View style={styles.inputGroup}>

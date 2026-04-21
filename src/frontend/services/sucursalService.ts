@@ -25,3 +25,30 @@ export const crearSucursalAPI = async (data: any) => {
     body: JSON.stringify(data),
   });
 };
+
+export const listarSucursalesAPI = async () => {
+  return await api("/api/sucursales", {
+    method: "GET",
+  });
+};
+
+export const suspenderSucursalAPI = async (id: string) => {
+  return await api(`/api/sucursales/${id}/suspender`, {
+    method: "PATCH",
+    headers: {
+      "role": "admin",
+    },
+  });
+};
+
+export const modificarSucursalAPI = async (id: string, datos: {
+  nombre: string;
+  direccion: string;
+  imagen: string;
+}) => {
+  return await api(`/api/sucursales/${id}/editar`, {
+    method: "PUT",
+    headers: { "role": "admin" },
+    body: JSON.stringify(datos),
+  });
+};

@@ -1,35 +1,75 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View, Text, TouchableOpacity, StyleSheet,
   SafeAreaView, StatusBar, ScrollView,
   Image, Modal,
 } from "react-native";
 import { NavbarLateral } from "@/frontend/components/navbar-lateral";
+import { listarSucursalesAPI, suspenderSucursalAPI } from "@/frontend/services/sucursalService";
+import { ActivityIndicator, Alert } from "react-native";
 
-const SUCURSALES_INICIAL = [
-  { id: 1, nombre: "Cafe Martinez", direccion: "Direccion........", imagen: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=600" },
-  { id: 2, nombre: "The Coffee Club", direccion: "Direccion........", imagen: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600" },
-  { id: 3, nombre: "Juan Valdez Cafe", direccion: "Direccion........", imagen: "https://images.unsplash.com/photo-1445116572660-236099ec97a0?w=600" },
-];
+type Sucursal = {
+  id_sucursal: string;
+  nombre: string;
+  direccion: string;
+  imagen: string;
+  estado_sucursal: boolean;
+};
 
 export default function EliminarSucursal() {
   const [navbarVisible, setNavbarVisible] = useState(false);
-  const [sucursales, setSucursales] = useState(SUCURSALES_INICIAL);
+  const [sucursales, setSucursales] = useState<Sucursal[]>([]); // 👈 array vacío
+  const [cargando, setCargando] = useState(false);
+  const [cargandoLista, setCargandoLista] = useState(true); // 👈 para el fetch inicial
   const [modalVisible, setModalVisible] = useState(false);
-  const [seleccionada, setSeleccionada] = useState<typeof SUCURSALES_INICIAL[0] | null>(null);
+  const [seleccionada, setSeleccionada] = useState<Sucursal | null>(null);
 
-  const abrirModal = (s: typeof SUCURSALES_INICIAL[0]) => {
+  useEffect(() => {
+    cargarSucursales();
+  }, []);
+
+
+    const abrirModal = (s: Sucursal) => {   // 👈 agrega aquí
     setSeleccionada(s);
     setModalVisible(true);
   };
 
-  const confirmarEliminar = () => {
-    if (seleccionada) {
-      setSucursales((prev) => prev.filter((s) => s.id !== seleccionada.id));
-    }
+  const cargarSucursales = async () => {
+  setCargandoLista(true);
+  try {
+    const result = await listarSucursalesAPI();
+    setSucursales(result.data || []);
+  } catch (error) {
+    Alert.alert("Error", "No se pudieron cargar las sucursales");
+  } finally {
+    setCargandoLista(false);
+  }
+};
+
+  const confirmarEliminar = async () => {
+  if (!seleccionada) return;
+  setCargando(true);
+  try {
+    
+    const result = await suspenderSucursalAPI(seleccionada.id_sucursal);
+    setSucursales((prev) => prev.filter((s) => s.id_sucursal !== seleccionada.id_sucursal)); // 👈
     setModalVisible(false);
     setSeleccionada(null);
-  };
+  } catch (error: any) {
+    Alert.alert("Error", error.message || "No se pudo suspender la sucursal");
+  } finally {
+    setCargando(false);
+  }
+};
+
+  // 👇 Muestra spinner mientras carga la lista
+  if (cargandoLista) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ActivityIndicator size="large" color="#0D5A52" style={{ flex: 1 }} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -51,7 +91,7 @@ export default function EliminarSucursal() {
         <Text style={styles.sectionTitle}>Cafeterías disponibles</Text>
 
         {sucursales.map((cafe) => (
-          <View key={cafe.id} style={styles.card}>
+          <View key={cafe.id_sucursal} style={styles.card}>
             <Image source={{ uri: cafe.imagen }} style={styles.cardImage} />
 
             {/* Botón eliminar */}
@@ -83,12 +123,23 @@ export default function EliminarSucursal() {
               {" "}ya no aparecera para los demas usuarios en la lista de sucursales
             </Text>
             <View style={styles.modalBtns}>
-              <TouchableOpacity style={styles.btnEliminar} onPress={confirmarEliminar}>
-                <Text style={styles.btnEliminarText}>Eliminar</Text>
+              <TouchableOpacity
+                  style={styles.btnEliminar}
+                  onPress={() => {
+                    console.log("🟡 Botón presionado, cargando:", cargando); // 👈
+                    confirmarEliminar();
+                  }}
+                  disabled={cargando}
+                >
+                {cargando
+                  ? <ActivityIndicator color="#fff" />  // 👈 spinner mientras espera respuesta
+                  : <Text style={styles.btnEliminarText}>Eliminar</Text>
+                }
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.btnCancelar}
                 onPress={() => setModalVisible(false)}
+                disabled={cargando} // 👈 evita cerrar mientras carga
               >
                 <Text style={styles.btnCancelarText}>Cancelar</Text>
               </TouchableOpacity>
