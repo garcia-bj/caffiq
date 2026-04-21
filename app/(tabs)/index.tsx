@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-import { getUsuarios } from "@/backend/usuarios";
+//import { getUsuarios } from "@/backend/usuarios";
 
 import { Image } from "expo-image";
 import { StyleSheet } from "react-native";

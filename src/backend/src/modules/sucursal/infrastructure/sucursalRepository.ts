@@ -1,14 +1,19 @@
-import { supabase } from "../../../../supabase";
-import { Sucursal } from "../domain/sucursal";
+// backend/src/modules/sucursal/infrastructure/sucursalRepository.ts
+import { supabase } from "../../../../supabase"; // Importa la conexión a Supabase
+import { Sucursal } from "../domain/sucursal"; // Importa la interface del Paso 1
 
-export const getSucursalesDB = async () => {
-  const { data, error } = await supabase.from("Sucursal").select("*");
+export const obtenerTodasLasSucursales = async (): Promise<Sucursal[]> => {
+  // Realizamos la consulta a la tabla 'Sucursal'
+  const { data, error } = await supabase
+    .from("Sucursal") // El nombre debe ser idéntico al de tu DB
+    .select("*")
+    .eq("estado_sucursal", true); // Filtramos solo las que están activas
 
-  return { data, error };
-};
+  // Si hay un error en la base de datos, lo lanzamos para que el controlador lo atrape
+  if (error) {
+    throw new Error(`Error en Supabase: ${error.message}`);
+  }
 
-export const addSucursalDB = async (sucursal: Sucursal) => {
-  const { data, error } = await supabase.from("Sucursal").insert([sucursal]);
-
-  return { data, error };
+  // Retornamos los datos con el formato de la interface
+  return data as Sucursal[];
 };

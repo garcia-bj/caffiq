@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,38 +8,48 @@ import {
   StyleSheet,
   SafeAreaView,
   StatusBar,
+  ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { NavbarLateral } from "@/frontend/components/navbar-lateral";
-
-const CAFETERIAS = [
-  {
-    id: 1,
-    nombre: "Cafe Martinez",
-    direccion: "Av. Ballivián #123, Cochabamba",
-    imagen: "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=600",
-  },
-  {
-    id: 2,
-    nombre: "The Coffee Club",
-    direccion: "Calle Sucre #456, Cochabamba",
-    imagen: "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=600",
-  },
-  {
-    id: 3,
-    nombre: "Juan Valdez Cafe",
-    direccion: "Plaza Principal #789, Cochabamba",
-    imagen: "https://images.unsplash.com/photo-1445116572660-236099ec97a0?w=600",
-  },
-];
+import { getSucursalesAPI } from "@/frontend/services/sucursalService";
+import { Sucursal } from "@/frontend/types/sucursal";
 
 export default function CafeteriasScreen() {
+  // Estados para la lógica
   const [navbarVisible, setNavbarVisible] = useState(false);
+  const [sucursales, setSucursales] = useState<Sucursal[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [refrescando, setRefrescando] = useState(false);
+
+  // Cargar datos al iniciar
+  useEffect(() => {
+    obtenerDatos();
+  }, []);
+
+  const obtenerDatos = async () => {
+    try {
+      const datos = await getSucursalesAPI();
+      setSucursales(datos);
+    } catch (error) {
+      console.error("Error al cargar sucursales:", error);
+    } finally {
+      setCargando(false);
+      setRefrescando(false);
+    }
+  };
+
+  const alRefrescar = () => {
+    setRefrescando(true);
+    obtenerDatos();
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#1a5c4a" />
+      {/* StatusBar con tu color Pine Teal */}
+      <StatusBar barStyle="light-content" backgroundColor="#0D5A52" />
 
-      {/* Header */}
+      {/* Header Estilo CAFFIQ */}
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.menuBtn}
@@ -53,30 +63,58 @@ export default function CafeteriasScreen() {
         <Text style={styles.headerTitle}>CAFFIQ</Text>
 
         <View style={styles.logoContainer}>
-          <Text style={styles.logoEmoji}></Text>
+          {/* Espacio para el logo o icono */}
         </View>
       </View>
 
-      {/* Contenido */}
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <Text style={styles.sectionTitle}>Cafeterías disponibles</Text>
+      {/* Cuerpo de la pantalla */}
+      {cargando ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#0D5A52" />
+          <Text style={styles.loadingText}>Cargando cafeterías...</Text>
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refrescando} onRefresh={alRefrescar} tintColor="#0D5A52" />
+          }
+        >
+          <Text style={styles.sectionTitle}>Cafeterías disponibles</Text>
 
-        {CAFETERIAS.map((cafe) => (
-          <TouchableOpacity key={cafe.id} style={styles.card} activeOpacity={0.85}>
-            <Image source={{ uri: cafe.imagen }} style={styles.cardImage} />
-            <View style={styles.cardOverlay}>
-              <Text style={styles.cardNombre}>{cafe.nombre}</Text>
-            </View>
-            <View style={styles.cardInfo}>
-              <Text style={styles.cardDireccion}>Direccion........ {cafe.direccion}</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+          {sucursales.length === 0 ? (
+            <Text style={styles.emptyText}>No hay sucursales disponibles por ahora.</Text>
+          ) : (
+            sucursales.map((cafe) => (
+              <TouchableOpacity 
+                key={cafe.id_sucursal} // Usando uuid de la DB
+                style={styles.card} 
+                activeOpacity={0.85}
+              >
+                {/* Imagen dinámica de la DB */}
+                <Image 
+                  source={{ uri: cafe.imagen || "https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=600" }} 
+                  style={styles.cardImage} 
+                />
+                
+                <View style={styles.cardOverlay}>
+                  {/* Nombre dinámico */}
+                  <Text style={styles.cardNombre}>{cafe.nombre}</Text>
+                </View>
+
+                <View style={styles.cardInfo}>
+                  {/* Dirección dinámica */}
+                  <Text style={styles.cardDireccion}>
+                    Direccion........ {cafe.direccion || "Dirección no especificada"}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
+        </ScrollView>
+      )}
 
       {/* Navbar lateral */}
       <NavbarLateral
@@ -90,10 +128,10 @@ export default function CafeteriasScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f5f0eb",
+    backgroundColor: "#FFFFFF", // White
   },
   header: {
-    backgroundColor: "#1a5c4a",
+    backgroundColor: "#0D5A52", // Pine Teal
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -120,13 +158,16 @@ const styles = StyleSheet.create({
   logoContainer: {
     width: 36,
     height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    alignItems: "center",
-    justifyContent: "center",
   },
-  logoEmoji: {
-    fontSize: 20,
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  loadingText: {
+    marginTop: 10,
+    color: "#0D5A52",
+    fontWeight: "600",
   },
   scrollView: {
     flex: 1,
@@ -138,10 +179,15 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#2d2d2d",
+    color: "#2C1819", // Coffee Bean
     textAlign: "center",
     marginBottom: 16,
     fontStyle: "italic",
+  },
+  emptyText: {
+    textAlign: "center",
+    color: "#777",
+    marginTop: 20,
   },
   card: {
     borderRadius: 14,
@@ -182,6 +228,6 @@ const styles = StyleSheet.create({
   },
   cardDireccion: {
     fontSize: 13,
-    color: "#777",
+    color: "#6FA58B", // Muted Teal
   },
 });
