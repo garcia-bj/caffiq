@@ -1,6 +1,8 @@
 import type { Request, Response, NextFunction } from "express";
 import { AppError } from "@shared/errors/AppError";
-import type { Rol } from "@modules/auth/auth.dto";
+import type { Rol } from "@modules/auth/domain/entities/Usuario";
+
+export const roleMiddleware = (rol: Rol) => requireRol(rol);
 
 // Uso: router.get("/ruta", authMiddleware, requireRol("admin"), handler)
 export const requireRol = (...roles: Rol[]) => {

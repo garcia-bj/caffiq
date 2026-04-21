@@ -1,13 +1,13 @@
 import { supabaseAdmin } from "@config/supabase";
-import type { RegisterDTO, UsuarioRow, CafeteriaDTO, CafeteriaRow } from "./auth.dto";
+import type { IAuthRepository, CreateUsuarioData, CafeteriaData } from "../../domain/repositories/IAuthRepository";
+import type { UsuarioEntity, CafeteriaEntity, Rol } from "../../domain/entities/Usuario";
 
 const T_USUARIOS   = "usuarios";
 const T_CAFETERIAS = "cafeterias";
 
-export const authRepository = {
+export class SupabaseAuthRepository implements IAuthRepository {
 
-  // ── Crear usuario nuevo ───────────────────────────────────────────────────
-  async crear(datos: Omit<RegisterDTO, "password" | "cafeteria"> & { password_hash: string }): Promise<UsuarioRow> {
+  async crear(datos: CreateUsuarioData): Promise<UsuarioEntity> {
     const { data, error } = await supabaseAdmin
       .from(T_USUARIOS)
       .insert([{
@@ -22,11 +22,10 @@ export const authRepository = {
       .single();
 
     if (error) throw new Error(error.message);
-    return data as UsuarioRow;
-  },
+    return data as UsuarioEntity;
+  }
 
-  // ── Crear cafeteria ligada al admin ───────────────────────────────────────
-  async crearCafeteria(admin_id: string, datos: CafeteriaDTO): Promise<CafeteriaRow> {
+  async crearCafeteria(admin_id: string, datos: CafeteriaData): Promise<CafeteriaEntity> {
     const { data, error } = await supabaseAdmin
       .from(T_CAFETERIAS)
       .insert([{
@@ -36,18 +35,17 @@ export const authRepository = {
         ciudad:           datos.ciudad,
         descripcion:      datos.descripcion ?? null,
         horario_apertura: datos.horario_apertura ?? null,
-        horario_cierre:   datos.horario_cierre   ?? null,
+        horario_cierre:   datos.horario_cierre ?? null,
         activa:           true,
       }])
       .select()
       .single();
 
     if (error) throw new Error(error.message);
-    return data as CafeteriaRow;
-  },
+    return data as CafeteriaEntity;
+  }
 
-  // ── Buscar por nom_usuario ────────────────────────────────────────────────
-  async buscarPorNombreUsuario(nom_usuario: string): Promise<UsuarioRow | null> {
+  async buscarPorNombreUsuario(nom_usuario: string): Promise<UsuarioEntity | null> {
     const { data, error } = await supabaseAdmin
       .from(T_USUARIOS)
       .select("*")
@@ -55,11 +53,10 @@ export const authRepository = {
       .maybeSingle();
 
     if (error) throw new Error(error.message);
-    return data as UsuarioRow | null;
-  },
+    return data as UsuarioEntity | null;
+  }
 
-  // ── Buscar por id ─────────────────────────────────────────────────────────
-  async buscarPorId(id: string): Promise<UsuarioRow | null> {
+  async buscarPorId(id: string): Promise<UsuarioEntity | null> {
     const { data, error } = await supabaseAdmin
       .from(T_USUARIOS)
       .select("*")
@@ -67,10 +64,9 @@ export const authRepository = {
       .maybeSingle();
 
     if (error) throw new Error(error.message);
-    return data as UsuarioRow | null;
-  },
+    return data as UsuarioEntity | null;
+  }
 
-  // ── Verificar unicidad de nom_usuario o num_telefono ─────────────────────
   async existeNombreOTelefono(nom_usuario: string, num_telefono: string): Promise<boolean> {
     const { data, error } = await supabaseAdmin
       .from(T_USUARIOS)
@@ -80,9 +76,8 @@ export const authRepository = {
 
     if (error) throw new Error(error.message);
     return (data?.length ?? 0) > 0;
-  },
+  }
 
-  // ── Marcar telefono como verificado ──────────────────────────────────────
   async marcarTelefonoVerificado(id: string): Promise<void> {
     const { error } = await supabaseAdmin
       .from(T_USUARIOS)
@@ -90,10 +85,9 @@ export const authRepository = {
       .eq("id", id);
 
     if (error) throw new Error(error.message);
-  },
+  }
 
-  // ── Obtener cafeteria del admin ───────────────────────────────────────────
-  async buscarCafeteriaPorAdmin(admin_id: string): Promise<CafeteriaRow | null> {
+  async buscarCafeteriaPorAdmin(admin_id: string): Promise<CafeteriaEntity | null> {
     const { data, error } = await supabaseAdmin
       .from(T_CAFETERIAS)
       .select("*")
@@ -101,17 +95,16 @@ export const authRepository = {
       .maybeSingle();
 
     if (error) throw new Error(error.message);
-    return data as CafeteriaRow | null;
-  },
+    return data as CafeteriaEntity | null;
+  }
 
-  // ── Upsert Google ─────────────────────────────────────────────────────────
   async upsertGoogle(datos: {
-    nom_usuario:  string;
+    nom_usuario: string;
     nom_completo: string;
     num_telefono: string;
-    rol:          "cliente" | "admin";
-    google_id:    string;
-  }): Promise<UsuarioRow> {
+    rol: Rol;
+    google_id: string;
+  }): Promise<UsuarioEntity> {
     const { data, error } = await supabaseAdmin
       .from(T_USUARIOS)
       .upsert(
@@ -130,6 +123,6 @@ export const authRepository = {
       .single();
 
     if (error) throw new Error(error.message);
-    return data as UsuarioRow;
-  },
-};
+    return data as UsuarioEntity;
+  }
+}

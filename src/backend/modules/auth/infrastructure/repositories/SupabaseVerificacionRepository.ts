@@ -1,20 +1,10 @@
 import { supabaseAdmin } from "@config/supabase";
+import type { IVerificacionRepository, VerificacionCodigoRow } from "../../domain/repositories/IVerificacionRepository";
 
 const TABLA = "codigos_verificacion";
 
-interface CodigoRow {
-  id: string;
-  usuario_id: string;
-  num_telefono: string;
-  codigo: string;
-  usado: boolean;
-  expira_en: string;
-  created_at: string;
-}
+export class SupabaseVerificacionRepository implements IVerificacionRepository {
 
-export const verificacionRepository = {
-
-  // ── Invalida codigos anteriores del usuario ─────────────────────────────
   async invalidarAnteriores(usuario_id: string): Promise<void> {
     const { error } = await supabaseAdmin
       .from(TABLA)
@@ -23,21 +13,18 @@ export const verificacionRepository = {
       .eq("usado", false);
 
     if (error) throw new Error(error.message);
-  },
+  }
 
-  // ── Guardar nuevo codigo ────────────────────────────────────────────────
   async guardar(usuario_id: string, num_telefono: string, codigo: string, expira_en: string): Promise<void> {
     const { error } = await supabaseAdmin
       .from(TABLA)
       .insert([{ usuario_id, num_telefono, codigo, expira_en }]);
 
     if (error) throw new Error(error.message);
-  },
+  }
 
-  // ── Buscar codigo valido (no usado, no expirado) ────────────────────────
-  async buscarValido(usuario_id: string, codigo: string): Promise<CodigoRow | null> {
+  async buscarValido(usuario_id: string, codigo: string): Promise<VerificacionCodigoRow | null> {
     const ahora = new Date().toISOString();
-
     const { data, error } = await supabaseAdmin
       .from(TABLA)
       .select("*")
@@ -50,10 +37,9 @@ export const verificacionRepository = {
       .maybeSingle();
 
     if (error) throw new Error(error.message);
-    return data as CodigoRow | null;
-  },
+    return data as VerificacionCodigoRow | null;
+  }
 
-  // ── Marcar codigo como usado ────────────────────────────────────────────
   async marcarUsado(id: string): Promise<void> {
     const { error } = await supabaseAdmin
       .from(TABLA)
@@ -61,12 +47,10 @@ export const verificacionRepository = {
       .eq("id", id);
 
     if (error) throw new Error(error.message);
-  },
+  }
 
-  // ── Rate limit: verificar si hay un codigo reciente (< 1 minuto) ────────
   async tieneCodigoReciente(usuario_id: string): Promise<boolean> {
     const unMinutoAtras = new Date(Date.now() - 60 * 1000).toISOString();
-
     const { data, error } = await supabaseAdmin
       .from(TABLA)
       .select("id")
@@ -76,5 +60,5 @@ export const verificacionRepository = {
 
     if (error) throw new Error(error.message);
     return (data?.length ?? 0) > 0;
-  },
-};
+  }
+}

@@ -1,7 +1,7 @@
 import express from "express";
 import { corsOptions } from "@config/cors";
-import authRoutes from "@modules/auth/auth.routes";
-import cafeteriasRoutes from "@modules/cafeterias/cafeterias.routes";
+import authRoutes from "@modules/auth/interfaces/auth.routes";
+import cafeteriasRoutes from "@modules/cafeterias/interfaces/cafeterias.routes";
 import { errorHandler } from "@shared/errors/error.handler";
 
 const app = express();

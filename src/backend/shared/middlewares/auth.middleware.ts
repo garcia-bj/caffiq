@@ -2,7 +2,9 @@ import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "@config/env";
 import { AppError } from "@shared/errors/AppError";
-import { authRepository } from "@modules/auth/auth.repository";
+import { SupabaseAuthRepository } from "@modules/auth/infrastructure/repositories/SupabaseAuthRepository";
+
+const authRepository = new SupabaseAuthRepository();
 
 interface JwtPayload {
   id: string;

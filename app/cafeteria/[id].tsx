@@ -7,7 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/frontend/context/AuthContext";
-import { cafeteriasService, type SucursalPublica } from "@/frontend/services/cafeterias.service";
+import { sucursalesService, type SucursalPublica } from "@/frontend/services/sucursales.service";
 
 const D = {
   bg:           "#091A17",
@@ -58,7 +58,11 @@ function EstadoBadge({ estado }: { estado: EstadoApertura }) {
   return null;
 }
 
-function SucursalItem({ item, index }: { item: SucursalPublica; index: number }) {
+function SucursalItem({
+  item, index, isAdmin, cafeteriaId,
+}: {
+  item: SucursalPublica; index: number; isAdmin: boolean; cafeteriaId: string;
+}) {
   const estado = calcularEstado(item.horario_apertura, item.horario_cierre);
   const iconBg = ICON_COLORS[index % ICON_COLORS.length];
 
@@ -83,14 +87,54 @@ function SucursalItem({ item, index }: { item: SucursalPublica; index: number })
             <Text style={styles.metaText}>{item.horario_apertura} – {item.horario_cierre}</Text>
           </View>
         ) : null}
+
+        {isAdmin ? (
+          <View style={styles.adminActions}>
+            <TouchableOpacity
+              style={styles.adminBtn}
+              onPress={() =>
+                router.push({
+                  pathname: "/sucursales/modificar" as never,
+                  params: {
+                    cafeteria_id: cafeteriaId,
+                    sucursal_id:  item.id,
+                    nombre:       item.nombre,
+                    direccion:    item.direccion,
+                    ciudad:       item.ciudad,
+                    apertura:     item.horario_apertura ?? "",
+                    cierre:       item.horario_cierre   ?? "",
+                    imagen:       item.imagen_url        ?? "",
+                  },
+                })
+              }
+            >
+              <Ionicons name="pencil-outline" size={14} color={D.accentText} />
+              <Text style={styles.adminBtnText}>Editar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.adminBtn, styles.adminBtnDanger]}
+              onPress={() =>
+                router.push({
+                  pathname: "/sucursales/eliminar" as never,
+                  params: { cafeteria_id: cafeteriaId, sucursal_id: item.id, nombre: item.nombre },
+                })
+              }
+            >
+              <Ionicons name="pause-circle-outline" size={14} color="#FF6B6B" />
+              <Text style={[styles.adminBtnText, { color: "#FF6B6B" }]}>Suspender</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
       </View>
     </View>
   );
 }
 
 export default function CafeteriaDetailScreen() {
-  const { id, nom_cafeteria } = useLocalSearchParams<{ id: string; nom_cafeteria: string }>();
-  const { token }             = useAuth();
+  const { id, nom_cafeteria }   = useLocalSearchParams<{ id: string; nom_cafeteria: string }>();
+  const { token, usuario }      = useAuth();
+  const isAdmin = usuario?.rol === "admin" && usuario?.cafeteria_id === id;
+
   const [sucursales, setSucursales] = useState<SucursalPublica[]>([]);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState<string | null>(null);
@@ -98,7 +142,7 @@ export default function CafeteriaDetailScreen() {
   const cargar = useCallback(async () => {
     if (!token || !id) return;
     try {
-      const { sucursales: data } = await cafeteriasService.sucursales(token, id);
+      const { sucursales: data } = await sucursalesService.listar(token, id);
       setSucursales(data);
       setError(null);
     } catch (e: unknown) {
@@ -112,7 +156,7 @@ export default function CafeteriaDetailScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      {/* ── Header ──────────────────────────────────────────────────────── */}
+      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color={D.primary} />
@@ -128,17 +172,25 @@ export default function CafeteriaDetailScreen() {
           ) : null}
         </View>
 
-        <View style={styles.headerActions}>
+        {isAdmin ? (
+          <TouchableOpacity
+            style={styles.addBtn}
+            onPress={() =>
+              router.push({
+                pathname: "/sucursales/agregar" as never,
+                params: { cafeteria_id: id },
+              })
+            }
+          >
+            <Ionicons name="add" size={22} color={D.primary} />
+          </TouchableOpacity>
+        ) : (
           <TouchableOpacity style={styles.iconBtn}>
             <Ionicons name="map-outline" size={20} color={D.primary} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn}>
-            <Ionicons name="menu" size={20} color={D.primary} />
-          </TouchableOpacity>
-        </View>
+        )}
       </View>
 
-      {/* ── Content ─────────────────────────────────────────────────────── */}
       {loading ? (
         <View style={styles.loadingBox}>
           <ActivityIndicator size="large" color={D.accentText} />
@@ -151,13 +203,33 @@ export default function CafeteriaDetailScreen() {
         <FlatList
           data={sucursales}
           keyExtractor={(item) => item.id}
-          renderItem={({ item, index }) => <SucursalItem item={item} index={index} />}
+          renderItem={({ item, index }) => (
+            <SucursalItem
+              item={item}
+              index={index}
+              isAdmin={isAdmin}
+              cafeteriaId={id!}
+            />
+          )}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyBox}>
               <Ionicons name="location-outline" size={48} color={D.secondary} />
               <Text style={styles.emptyText}>No hay sucursales registradas</Text>
+              {isAdmin ? (
+                <TouchableOpacity
+                  style={styles.emptyAddBtn}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/sucursales/agregar" as never,
+                      params: { cafeteria_id: id },
+                    })
+                  }
+                >
+                  <Text style={styles.emptyAddText}>+ Agregar primera sucursal</Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
           }
         />
@@ -175,8 +247,8 @@ const styles = StyleSheet.create({
   headerCenter:  { flex: 1, paddingHorizontal: 4 },
   headerTitle:   { fontSize: 18, fontWeight: "800", color: D.primary },
   headerSub:     { fontSize: 12, color: D.secondary, marginTop: 2 },
-  headerActions: { flexDirection: "row", gap: 8 },
   iconBtn:       { width: 38, height: 38, borderRadius: 19, backgroundColor: D.card, alignItems: "center", justifyContent: "center" },
+  addBtn:        { width: 38, height: 38, borderRadius: 19, backgroundColor: "#0D5A52", alignItems: "center", justifyContent: "center" },
 
   card:       { flexDirection: "row", alignItems: "flex-start", backgroundColor: D.card, borderRadius: 16, borderWidth: 1, borderColor: D.cardBorder, padding: 16, marginBottom: 10 },
   cardIcon:   { width: 54, height: 54, borderRadius: 12, alignItems: "center", justifyContent: "center", marginRight: 14, flexShrink: 0 },
@@ -188,6 +260,15 @@ const styles = StyleSheet.create({
   cardMeta:   { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6 },
   metaText:   { fontSize: 11, color: D.secondary },
 
+  adminActions: { flexDirection: "row", gap: 8, marginTop: 10 },
+  adminBtn: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: "#0D2E1E", borderRadius: 8,
+    paddingHorizontal: 10, paddingVertical: 5,
+  },
+  adminBtnDanger: { backgroundColor: "#2E0D0D" },
+  adminBtnText:   { fontSize: 12, color: D.accentText, fontWeight: "600" },
+
   badge:     { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, flexShrink: 0 },
   badgeText: { fontSize: 10, fontWeight: "700" },
 
@@ -196,4 +277,6 @@ const styles = StyleSheet.create({
   errorText:  { color: "#FF6B6B", fontSize: 13, textAlign: "center" },
   emptyBox:   { alignItems: "center", paddingTop: 60, gap: 12 },
   emptyText:  { color: D.secondary, fontSize: 15 },
+  emptyAddBtn: { marginTop: 8, backgroundColor: "#0D5A52", borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 },
+  emptyAddText: { color: D.primary, fontSize: 14, fontWeight: "700" },
 });
