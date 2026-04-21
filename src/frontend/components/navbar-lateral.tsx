@@ -29,13 +29,14 @@ const MENU_SECTIONS = [
       { label: "Eliminar sucursal",  ruta: "/sucursales/eliminar"  },
     ],
   },
+  
   {
     key: "menu",
     label: "Gestionar Menu",
     opciones: [
-      { label: "Añadir menu",    ruta: "/menu/"   },
-      { label: "Modificar menu", ruta: "/menu/" },
-      { label: "Eliminar menu",  ruta: "/menu/"  },
+      { label: "Añadir menu",    ruta: "/menu/agregar"   },
+      { label: "Modificar menu", ruta: "/menu/modificar" },
+      { label: "Eliminar menu",  ruta: "/menu/eliminar"  },
     ],
   },
   {
