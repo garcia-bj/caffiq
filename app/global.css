@@ -1,0 +1,7 @@
+/* Quita el outline nativo del browser en todos los inputs de la app */
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}

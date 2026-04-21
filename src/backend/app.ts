@@ -1,6 +1,7 @@
 import express from "express";
 import { corsOptions } from "@config/cors";
 import authRoutes from "@modules/auth/auth.routes";
+import cafeteriasRoutes from "@modules/cafeterias/cafeterias.routes";
 import { errorHandler } from "@shared/errors/error.handler";
 
 const app = express();
@@ -17,6 +18,7 @@ app.get("/api/health", (_req, res) => {
 
 // ── Rutas ─────────────────────────────────────────────────────────────────────
 app.use("/api/auth", authRoutes);
+app.use("/api/cafeterias", cafeteriasRoutes);
 
 // ── Ruta no encontrada ────────────────────────────────────────────────────────
 app.use((_req, res) => {

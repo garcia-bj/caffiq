@@ -59,7 +59,11 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!nomUsuario.trim() || !password.trim()) {
-      Alert.alert("Campos requeridos", "Ingresa tu usuario y contraseña.");
+      Alert.alert("Campos requeridos", "Ingresa tu correo y contraseña.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nomUsuario.trim())) {
+      Alert.alert("Correo inválido", "Ingresa un correo electrónico válido.");
       return;
     }
     try {
@@ -107,20 +111,21 @@ export default function LoginScreen() {
             {/* ── Formulario ───────────────────────────────────────────── */}
             <View style={styles.form}>
 
-              {/* Usuario */}
+              {/* Correo */}
               <View style={styles.inputWrapper}>
                 <Ionicons
-                  name="person-outline"
+                  name="mail-outline"
                   size={20}
                   color={Caffiq.placeholder}
                   style={styles.inputIcon}
                 />
                 <TextInput
                   style={styles.input}
-                  placeholder="Usuario"
+                  placeholder="Correo electrónico"
                   placeholderTextColor={Caffiq.placeholder}
                   value={nomUsuario}
                   onChangeText={setNomUsuario}
+                  keyboardType="email-address"
                   autoCapitalize="none"
                   autoCorrect={false}
                 />

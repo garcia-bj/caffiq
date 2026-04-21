@@ -237,7 +237,8 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: Caffiq.textDark,
     textAlign: "center",
-  },
+    outlineWidth: 0,
+  } as never,
   otpBoxFilled: {
     borderColor: Caffiq.pineTeal,
     backgroundColor: "#E8F5F2",

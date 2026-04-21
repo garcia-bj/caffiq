@@ -14,6 +14,10 @@ export const authController = {
       if (!nom_usuario || !nom_completo || !num_telefono || !password || !rol) {
         throw new AppError("Todos los campos son requeridos", 400);
       }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(nom_usuario)) {
+        throw new AppError("nom_usuario debe ser un correo electrónico válido", 400);
+      }
       if (!["cliente", "admin"].includes(rol)) {
         throw new AppError("El rol debe ser 'cliente' o 'admin'", 400);
       }

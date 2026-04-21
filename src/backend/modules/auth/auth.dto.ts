@@ -13,7 +13,7 @@ export interface CafeteriaDTO {
 }
 
 export interface RegisterDTO {
-  nom_usuario:  string;
+  nom_usuario:  string; // debe ser un correo electrónico válido
   nom_completo: string;
   num_telefono: string; // formato: +521XXXXXXXXXX
   password:     string;
