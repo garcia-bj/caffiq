@@ -1,4 +1,4 @@
-
+// backend/src/modules/sucursal/interfaces/sucursalController.ts
 import { Request, Response } from "express";
 import {
   crearSucursal as crearSucursalService,
@@ -6,27 +6,33 @@ import {
 } from "../application/sucursalService";
 import { suspenderSucursal } from "../application/SuspenderSucursal";
 import { modificarSucursal } from "../application/ModificarSucursal";
+import { obtenerTodasLasSucursales } from "../infrastructure/sucursalRepository";
 
-export const crearSucursal = async (req: Request, res: Response) => {
-  const data = req.body;
-  console.log("📥 BODY RECIBIDO:", req.body); // 👈 agrega esto
-  const result = await crearSucursalService(data);
+// Esta es la función que responde al GET que definiste en tus rutas
+export const listarSucursales = async (req: Request, res: Response) => {
+  try {
+    // Llamamos al repositorio que busca en Supabase
+    const sucursales = await obtenerTodasLasSucursales();
 
-  if (result.error) {
-    return res.status(400).json({ error: result.error });
+    // Respondemos al Frontend con un código 200 (Éxito) y los datos en JSON
+    res.status(200).json(sucursales);
+  } catch (error: any) {
+    // Si algo falla, respondemos con código 500 (Error de servidor)
+    res.status(500).json({ 
+      error: "No se pudieron obtener las sucursales",
+      detalle: error.message 
+    });
   }
-
-  return res.json({ data: result.data });
 };
 
-export const listarSucursales = async (req: Request, res: Response) => {
-  const result = await listarSucursalesService();
-
-  if (result.error) {
-    return res.status(400).json({ error: result.error });
+// Dejamos la función para el POST lista (aunque esté vacía por ahora)
+export const crearSucursal = async (req: Request, res: Response) => {
+  try {
+    res.status(501).json({ message: "La creación de sucursales se implementará pronto" });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
   }
-
-  return res.json({ data: result.data });
+  // ← sin nada más aquí
 };
 
 export const suspenderSucursalController = async (req: Request, res: Response) => {

@@ -17,8 +17,20 @@ export const crearSucursalAPI = async (data: any) => {
     return { error };
   }
 };*/
+// frontend/services/sucursalService.ts
 import { api } from "./api";
+import { Sucursal } from "../types/sucursal"; 
 
+// Función para listar (GET) -
+export const getSucursalesAPI = async (): Promise<Sucursal[]> => {
+  const response = await api("/api/sucursales", {
+    method: "GET",
+  });
+  // Si tu wrapper 'api' ya retorna el JSON, lo usamos directamente
+  return response; 
+};
+
+// Función para crear (POST) 
 export const crearSucursalAPI = async (data: any) => {
   return await api("/api/sucursales", {
     method: "POST",

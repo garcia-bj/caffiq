@@ -1,24 +1,26 @@
-import { supabase } from "../../../../supabase"; 
+
+import { supabase } from "../../../../supabase"; // ajusta la ruta
 import { Sucursal } from "../domain/sucursal";
 
-export const getSucursalesDB = async()=>{
+export const obtenerTodasLasSucursales = async (): Promise<Sucursal[]> => {
   const { data, error } = await supabase
     .from("Sucursal")
     .select("*")
-    .eq("estado_sucursal", true); // 👈 SOLO ACTIVAS
+    .eq("estado_sucursal", true);
 
-  return { data, error };
-};
+  if (error) {
+    throw new Error(`Error en Supabase: ${error.message}`);
+  }
+
+  return data as Sucursal[]; 
+};                            
 
 export const addSucursalDB = async (sucursal: Sucursal) => {
   const { data, error } = await supabase.from("Sucursal").insert([sucursal]);
-
   return { data, error };
 };
 
-// infrastructure/sucursalRepository.ts
-// sucursalRepository.ts
-export const getSucursalById = async (id: string) => { // 👈 string
+export const getSucursalById = async (id: string) => {
   return await supabase
     .from("Sucursal")
     .select("*")
@@ -26,13 +28,12 @@ export const getSucursalById = async (id: string) => { // 👈 string
     .single();
 };
 
-export const suspenderSucursalDB = async (id: string) => { // 👈 string
+export const suspenderSucursalDB = async (id: string) => {
   const { data, error } = await supabase
     .from("Sucursal")
     .update({ estado_sucursal: false })
     .eq("id_sucursal", id)
     .select();
-
   return { data, error };
 };
 
@@ -46,7 +47,6 @@ export const modificarSucursalDB = async (id: string, datos: {
     .update(datos)
     .eq("id_sucursal", id)
     .select();
-
   return { data, error };
 };
 
@@ -60,8 +60,8 @@ export const verificarDuplicadoDB = async (
     .select("id_sucursal")
     .eq("nombre", nombre)
     .eq("direccion", direccion)
-    .neq("id_sucursal", idExcluir) // excluye la sucursal actual
+    .neq("id_sucursal", idExcluir)
     .single();
 
-  return !!data; // true si existe duplicado
+  return !!data; // ✅ solo un return
 };
