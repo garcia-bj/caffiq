@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import {
   crearSucursal as crearSucursalService,
   listarSucursales as listarSucursalesService,
+  listarTodasSucursalesSinFiltro as listarTodasService
 } from "../application/sucursalService";
 import { suspenderSucursal } from "../application/SuspenderSucursal";
 import { modificarSucursal } from "../application/ModificarSucursal";
@@ -25,14 +26,42 @@ export const listarSucursales = async (req: Request, res: Response) => {
   }
 };
 
+export const listarTodasSucursales = async (req: Request, res: Response) => {
+  try {
+    const sucursales = await listarTodasService();
+    res.status(200).json(sucursales);
+  } catch (error: any) {
+    res.status(500).json({ error: "No se pudieron obtener las sucursales", detalle: error.message });
+  }
+};
 // Dejamos la función para el POST lista (aunque esté vacía por ahora)
 export const crearSucursal = async (req: Request, res: Response) => {
   try {
-    res.status(501).json({ message: "La creación de sucursales se implementará pronto" });
+    const { nombre, direccion, imagen, estado_sucursal } = req.body;
+
+    if (!nombre || !direccion) {
+      return res.status(400).json({ error: "Nombre y dirección son obligatorios" });
+    }
+
+    const result = await crearSucursalService({
+      nombre,
+      direccion,
+      imagen: imagen || null,
+      estado_sucursal: estado_sucursal ?? true,
+    });
+
+    if (result.error) {
+      return res.status(400).json({ error: result.error });
+    }
+
+    res.status(201).json({
+      message: "Sucursal creada correctamente ✅",
+      data: result.data,
+    });
+
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
-  // ← sin nada más aquí
 };
 
 export const suspenderSucursalController = async (req: Request, res: Response) => {
@@ -72,13 +101,13 @@ export const modificarSucursalController = async (req: Request, res: Response) =
       return res.status(403).json({ error: "No autorizado" });
     }
 
-    const { nombre, direccion, imagen } = req.body;
+    const { nombre, direccion, imagen , estado_sucursal} = req.body;
 
     if (!nombre || !direccion || !imagen) {
       return res.status(400).json({ error: "Todos los campos son obligatorios" });
     }
 
-    const result = await modificarSucursal(id, { nombre, direccion, imagen });
+    const result = await modificarSucursal(id, { nombre, direccion, imagen, estado_sucursal });
 
     if (result.error) {
       return res.status(400).json({ error: result.error });

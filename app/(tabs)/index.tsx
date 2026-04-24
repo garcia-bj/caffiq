@@ -23,19 +23,6 @@ export default function HomeScreen() {
   const router = useRouter();
   const [url, setUrl] = useState<string | null>(null);
 
-  useEffect(() => {
-    probarConexion();
-  }, []);
-
-  async function probarConexion() {
-    const { data, error } = await getUsuarios();
-
-    if (error) {
-      console.log("Error:", error);
-    } else {
-      console.log("Datos:", data);
-    }
-  }
 
   const handleSubirImagen = async () => {
     try {

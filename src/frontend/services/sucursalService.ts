@@ -29,7 +29,9 @@ export const getSucursalesAPI = async (): Promise<Sucursal[]> => {
   // Si tu wrapper 'api' ya retorna el JSON, lo usamos directamente
   return response; 
 };
-
+export const listarTodasSucursalesAPI = async (): Promise<Sucursal[]> => {
+  return await api("/api/sucursales/todas", { method: "GET" });
+};
 // Función para crear (POST) 
 export const crearSucursalAPI = async (data: any) => {
   return await api("/api/sucursales", {
@@ -57,6 +59,7 @@ export const modificarSucursalAPI = async (id: string, datos: {
   nombre: string;
   direccion: string;
   imagen: string;
+  estado_sucursal: boolean;
 }) => {
   return await api(`/api/sucursales/${id}/editar`, {
     method: "PUT",

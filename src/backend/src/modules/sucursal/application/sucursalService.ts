@@ -1,7 +1,8 @@
 import { Sucursal } from "../domain/sucursal";
 import {
     addSucursalDB,
-    getSucursalesDB,
+    obtenerTodasLasSucursales,
+    obtenerTodasSucursalesSinFiltro, 
 } from "../infrastructure/sucursalRepository";
 
 export const crearSucursal = async (sucursal: Sucursal) => {
@@ -9,5 +10,9 @@ export const crearSucursal = async (sucursal: Sucursal) => {
 };
 
 export const listarSucursales = async () => {
-  return await getSucursalesDB();
+  return await obtenerTodasLasSucursales();
 };
+
+export const listarTodasSucursalesSinFiltro = async () => {
+  return await obtenerTodasSucursalesSinFiltro();
+}

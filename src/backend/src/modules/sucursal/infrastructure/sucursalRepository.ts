@@ -41,6 +41,7 @@ export const modificarSucursalDB = async (id: string, datos: {
   nombre: string;
   direccion: string;
   imagen: string;
+  estado_sucursal: boolean;
 }) => {
   const { data, error } = await supabase
     .from("Sucursal")
@@ -63,5 +64,17 @@ export const verificarDuplicadoDB = async (
     .neq("id_sucursal", idExcluir)
     .single();
 
-  return !!data; // ✅ solo un return
+  return !!data; 
+};
+// Trae TODAS sin filtrar por estado
+export const obtenerTodasSucursalesSinFiltro = async (): Promise<Sucursal[]> => {
+  const { data, error } = await supabase
+    .from("Sucursal")
+    .select("*"); // ← sin .eq("estado_sucursal", true)
+
+  if (error) {
+    throw new Error(`Error en Supabase: ${error.message}`);
+  }
+
+  return data as Sucursal[];
 };

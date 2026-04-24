@@ -9,6 +9,7 @@ export const modificarSucursal = async (id: string, datos: {
   nombre: string;
   direccion: string;
   imagen: string;
+  estado_sucursal: boolean;
 }) => {
   // Validar campos vacíos
   if (!datos.nombre || !datos.direccion || !datos.imagen) {

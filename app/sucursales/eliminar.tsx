@@ -5,16 +5,11 @@ import {
   Image, Modal,
 } from "react-native";
 import { NavbarLateral } from "@/frontend/components/navbar-lateral";
-import { listarSucursalesAPI, suspenderSucursalAPI } from "@/frontend/services/sucursalService";
+import { listarSucursalesAPI, suspenderSucursalAPI, getSucursalesAPI } from "@/frontend/services/sucursalService";
 import { ActivityIndicator, Alert } from "react-native";
+import { Sucursal } from "@/frontend/types/sucursal";
 
-type Sucursal = {
-  id_sucursal: string;
-  nombre: string;
-  direccion: string;
-  imagen: string;
-  estado_sucursal: boolean;
-};
+
 
 export default function EliminarSucursal() {
   const [navbarVisible, setNavbarVisible] = useState(false);
@@ -37,8 +32,8 @@ export default function EliminarSucursal() {
   const cargarSucursales = async () => {
   setCargandoLista(true);
   try {
-    const result = await listarSucursalesAPI();
-    setSucursales(result.data || []);
+    const datos = await getSucursalesAPI();
+    setSucursales(datos || []); 
   } catch (error) {
     Alert.alert("Error", "No se pudieron cargar las sucursales");
   } finally {
@@ -92,7 +87,7 @@ export default function EliminarSucursal() {
 
         {sucursales.map((cafe) => (
           <View key={cafe.id_sucursal} style={styles.card}>
-            <Image source={{ uri: cafe.imagen }} style={styles.cardImage} />
+            <Image source={{ uri: cafe.imagen || undefined }} style={styles.cardImage} />
 
             {/* Botón eliminar */}
             <TouchableOpacity
