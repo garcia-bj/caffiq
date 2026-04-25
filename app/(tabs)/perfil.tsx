@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, Alert, ActivityIndicator,
+  ScrollView, Alert, ActivityIndicator, Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -43,23 +43,31 @@ export default function PerfilScreen() {
   const { usuario, logout } = useAuth();
   const [loggingOut, setLoggingOut] = useState(false);
 
-  const handleLogout = () => {
-    Alert.alert(
-      "Cerrar sesión",
-      "¿Estás seguro que deseas salir?",
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Cerrar sesión",
-          style: "destructive",
-          onPress: async () => {
-            setLoggingOut(true);
-            await logout();
-            router.replace("/(auth)/welcome");
+  const handleLogout = async () => {
+    if (Platform.OS === "web") {
+      // Alert.alert no soporta botones en web
+      if (!window.confirm("¿Estás seguro que deseas cerrar sesión?")) return;
+      setLoggingOut(true);
+      await logout();
+      router.replace("/(auth)/welcome");
+    } else {
+      Alert.alert(
+        "Cerrar sesión",
+        "¿Estás seguro que deseas salir?",
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Cerrar sesión",
+            style: "destructive",
+            onPress: async () => {
+              setLoggingOut(true);
+              await logout();
+              router.replace("/(auth)/welcome");
+            },
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const isAdmin   = usuario?.rol === "admin";

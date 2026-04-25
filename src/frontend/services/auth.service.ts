@@ -10,6 +10,7 @@ export interface UsuarioPublico {
   rol: Rol;
   telefono_verificado: boolean;
   created_at: string;
+  cafeteria_id?: string;
 }
 
 interface AuthResponse {

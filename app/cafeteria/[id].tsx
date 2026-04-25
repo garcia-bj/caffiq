@@ -59,15 +59,28 @@ function EstadoBadge({ estado }: { estado: EstadoApertura }) {
 }
 
 function SucursalItem({
-  item, index, isAdmin, cafeteriaId,
+  item, index, isAdmin, cafeteriaId, nomCafeteria,
 }: {
-  item: SucursalPublica; index: number; isAdmin: boolean; cafeteriaId: string;
+  item: SucursalPublica; index: number; isAdmin: boolean; cafeteriaId: string; nomCafeteria: string;
 }) {
   const estado = calcularEstado(item.horario_apertura, item.horario_cierre);
   const iconBg = ICON_COLORS[index % ICON_COLORS.length];
 
+  const irAlMenu = () => {
+    if (isAdmin) return; // admin no va al menú, gestiona sucursales
+    router.push({
+      pathname: "/sucursal/[id]" as never,
+      params: {
+        id:                item.id,
+        cafeteria_id:      cafeteriaId,
+        cafeteria_nombre:  nomCafeteria,
+        sucursal_nombre:   item.nombre,
+      },
+    });
+  };
+
   return (
-    <View style={styles.card}>
+    <TouchableOpacity style={styles.card} onPress={irAlMenu} activeOpacity={isAdmin ? 1 : 0.75}>
       {item.imagen_url ? (
         <Image source={{ uri: item.imagen_url }} style={styles.cardImg} resizeMode="cover" />
       ) : (
@@ -126,7 +139,7 @@ function SucursalItem({
           </View>
         ) : null}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -209,6 +222,7 @@ export default function CafeteriaDetailScreen() {
               index={index}
               isAdmin={isAdmin}
               cafeteriaId={id!}
+              nomCafeteria={nom_cafeteria ?? ""}
             />
           )}
           contentContainerStyle={styles.listContent}
