@@ -22,8 +22,7 @@ type Rol = "cliente" | "admin";
 type Errors = Record<string, string>;
 
 // ─── Regex ────────────────────────────────────────────────────────────────────
-const EMAIL_RE   = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const HORARIO_RE = /^\d{2}:\d{2}$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // ─── Fondo decorativo ─────────────────────────────────────────────────────────
 function BackgroundPattern() {
@@ -125,8 +124,6 @@ export default function RegisterScreen() {
   const [nomCafeteria,    setNomCafeteria]     = useState("");
   const [direccion,       setDireccion]        = useState("");
   const [descripcion,     setDescripcion]      = useState("");
-  const [horarioApertura, setHorarioApertura]  = useState("");
-  const [horarioCierre,   setHorarioCierre]    = useState("");
   const [ciudadCafeteria, setCiudadCafeteria]  = useState("");
 
   const [errors,  setErrors]  = useState<Errors>({});
@@ -164,12 +161,7 @@ export default function RegisterScreen() {
       case "ciudadCafeteria":
         if (!val.trim())    return "La ciudad es requerida";
         break;
-      case "horarioApertura":
-        if (val && !HORARIO_RE.test(val))   return "Formato HH:MM (ej. 08:00)";
-        break;
-      case "horarioCierre":
-        if (val && !HORARIO_RE.test(val))   return "Formato HH:MM (ej. 22:00)";
-        break;
+
     }
     return "";
   };
@@ -192,8 +184,6 @@ export default function RegisterScreen() {
       newErrors.nomCafeteria    = validate("nomCafeteria",    nomCafeteria);
       newErrors.direccion       = validate("direccion",       direccion);
       newErrors.ciudadCafeteria = validate("ciudadCafeteria", ciudadCafeteria);
-      newErrors.horarioApertura = validate("horarioApertura", horarioApertura);
-      newErrors.horarioCierre   = validate("horarioCierre",   horarioCierre);
     }
     setErrors(newErrors);
     return Object.values(newErrors).every(e => !e);
@@ -212,12 +202,10 @@ export default function RegisterScreen() {
         rol,
         ...(rol === "admin" && {
           cafeteria: {
-            nom_cafeteria:    nomCafeteria.trim(),
-            direccion:        direccion.trim(),
-            ciudad:           ciudadCafeteria.trim(),
-            descripcion:      descripcion.trim() || undefined,
-            horario_apertura: horarioApertura || undefined,
-            horario_cierre:   horarioCierre   || undefined,
+            nom_cafeteria: nomCafeteria.trim(),
+            direccion:     direccion.trim(),
+            ciudad:        ciudadCafeteria.trim(),
+            descripcion:   descripcion.trim() || undefined,
           },
         }),
       };
@@ -338,25 +326,6 @@ export default function RegisterScreen() {
                     value={descripcion} onChange={setDescripcion}
                     error={errors.descripcion} autoCapitalize="sentences" multiline
                   />
-
-                  <View style={styles.horarioRow}>
-                    <View style={{ flex: 1 }}>
-                      <Field
-                        icon="time-outline" placeholder="Apertura (08:00)"
-                        value={horarioApertura} onChange={setHorarioApertura}
-                        onBlur={() => setFieldError("horarioApertura", horarioApertura)}
-                        error={errors.horarioApertura} keyboardType="numbers-and-punctuation"
-                      />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Field
-                        icon="time-outline" placeholder="Cierre (22:00)"
-                        value={horarioCierre} onChange={setHorarioCierre}
-                        onBlur={() => setFieldError("horarioCierre", horarioCierre)}
-                        error={errors.horarioCierre} keyboardType="numbers-and-punctuation"
-                      />
-                    </View>
-                  </View>
                 </>
               )}
 
@@ -437,8 +406,6 @@ const styles = StyleSheet.create({
   // Error tag
   errorTag:     { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 4 },
   errorTagText: { fontSize: 12, color: Caffiq.error, fontWeight: "500" },
-
-  horarioRow: { flexDirection: "row", gap: 10 },
 
   // Botón
   registerBtn:     { backgroundColor: Caffiq.pineTeal, borderRadius: 12, paddingVertical: 15, alignItems: "center", marginTop: 4, shadowColor: Caffiq.pineTeal, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 8, elevation: 5 },
