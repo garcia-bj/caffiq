@@ -1,179 +1,381 @@
-import { Ionicons } from "@expo/vector-icons";
-import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+// frontend/screens/ModificarSucursal.tsx
+import React, { useState, useEffect } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+  View, Text, TextInput, TouchableOpacity,
+  StyleSheet, SafeAreaView, StatusBar,
+  ScrollView, Image, Alert, Modal, ActivityIndicator,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Caffiq } from "@/frontend/constants/theme";
-import { useAuth } from "@/frontend/context/AuthContext";
-import { sucursalesService } from "@/frontend/services/sucursales.service";
-import { seleccionarImagen } from "@/frontend/services/imagePicker.service";
-import { subirImagenCloudinary } from "@/frontend/services/cloudinary.service";
+import * as ImagePicker from "expo-image-picker";
+import { NavbarLateral } from "@/frontend/components/navbar-lateral";
+import { getSucursalesAPI, modificarSucursalAPI, listarTodasSucursalesAPI } from "@/frontend/services/sucursalService";
+import { Sucursal } from "@/frontend/types/sucursal"; // ← tipo global, sin redefinir
 
-export default function ModificarSucursalScreen() {
-  const { cafeteria_id, sucursal_id, nombre: nombreParam, direccion: direccionParam, ciudad: ciudadParam, apertura: aperturaParam, cierre: cierreParam, imagen: imagenParam } =
-    useLocalSearchParams<{
-      cafeteria_id: string; sucursal_id: string;
-      nombre?: string; direccion?: string; ciudad?: string;
-      apertura?: string; cierre?: string; imagen?: string;
-    }>();
-  const { token } = useAuth();
+export default function ModificarSucursal() {
+  const [navbarVisible, setNavbarVisible] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [sucursales, setSucursales] = useState<Sucursal[]>([]);
+  const [cargandoLista, setCargandoLista] = useState(true);
+  const [cargandoGuardar, setCargandoGuardar] = useState(false);
+  const [seleccionada, setSeleccionada] = useState<Sucursal | null>(null);
+  const [nombre, setNombre] = useState("");
+  const [direccion, setDireccion] = useState("");
+  const [imagenActual, setImagenActual] = useState<string | null>(null);
+  const [modalConfirm, setModalConfirm] = useState(false);
+  const [estado, setEstado] = useState<"activo" | "suspendido">("activo");
 
-  const [nombre, setNombre]     = useState(nombreParam    ?? "");
-  const [direccion, setDireccion] = useState(direccionParam ?? "");
-  const [ciudad, setCiudad]     = useState(ciudadParam    ?? "");
-  const [apertura, setApertura] = useState(aperturaParam  ?? "");
-  const [cierre, setCierre]     = useState(cierreParam    ?? "");
-  const [imagenUri, setImagenUri] = useState<string | null>(null);
-  const [loading, setLoading]   = useState(false);
+  useEffect(() => {
+    cargarSucursales();
+  }, []);
 
-  const handlePickImage = async () => {
-    try {
-      const uri = await seleccionarImagen();
-      if (uri) setImagenUri(uri);
-    } catch (e: unknown) {
-      Alert.alert("Error", e instanceof Error ? e.message : "No se pudo seleccionar imagen");
-    }
+  // ── Cargar lista ──────────────────────────────────────────
+  const cargarSucursales = async () => {
+  setCargandoLista(true);
+  try {
+    const datos = await listarTodasSucursalesAPI(); // ← endpoint /todas
+    setSucursales(datos || []);
+  } catch (error) {
+    Alert.alert("Error", "No se pudieron cargar las sucursales");
+  } finally {
+    setCargandoLista(false);
+  }
+};
+
+  // ── Seleccionar sucursal del dropdown ─────────────────────
+  const seleccionar = (s: Sucursal) => {
+    setSeleccionada(s);
+    setNombre(s.nombre);
+    setDireccion(s.direccion || "");   // ← null → string vacío
+    setImagenActual(s.imagen || null); // ← null seguro
+    setEstado(s.estado_sucursal === false ? "suspendido" : "activo");
+    setDropdownOpen(false);
   };
 
-  const handleGuardar = async () => {
-    if (!nombre.trim() || !direccion.trim() || !ciudad.trim()) {
-      Alert.alert("Campos requeridos", "Nombre, dirección y ciudad son obligatorios.");
+  // ── Cambiar imagen desde galería ──────────────────────────
+  const cambiarImagen = async () => {
+    const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permiso.granted) {
+      Alert.alert("Permiso requerido", "Necesitamos acceso a tu galería.");
       return;
     }
-    try {
-      setLoading(true);
-      let imagen_url: string | undefined = imagenParam ?? undefined;
-
-      if (imagenUri) {
-        imagen_url = await subirImagenCloudinary(imagenUri);
-      }
-
-      await sucursalesService.modificar(token!, cafeteria_id!, sucursal_id!, {
-        nombre: nombre.trim(),
-        direccion: direccion.trim(),
-        ciudad: ciudad.trim(),
-        horario_apertura: apertura.trim() || undefined,
-        horario_cierre:   cierre.trim()   || undefined,
-        imagen_url,
-      });
-
-      Alert.alert("Éxito", "Sucursal actualizada.", [
-        { text: "OK", onPress: () => router.back() },
-      ]);
-    } catch (e: unknown) {
-      Alert.alert("Error", e instanceof Error ? e.message : "No se pudo actualizar");
-    } finally {
-      setLoading(false);
+    const resultado = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.8,
+    });
+    if (!resultado.canceled) {
+      setImagenActual(resultado.assets[0].uri);
     }
   };
 
-  const imagenMostrada = imagenUri ?? (imagenParam || null);
+  // ── Quitar imagen ─────────────────────────────────────────
+  const quitarImagen = () => setImagenActual(null);
+
+  // ── Validar antes de mostrar modal ────────────────────────
+  const intentarGuardar = () => {
+    if (!seleccionada) {
+      Alert.alert("Sin selección", "Por favor selecciona una sucursal.");
+      return;
+    }
+    if (!nombre.trim()) {
+      Alert.alert("Campo requerido", "El nombre no puede estar vacío.");
+      return;
+    }
+    if (!direccion.trim()) {
+      Alert.alert("Campo requerido", "La dirección no puede estar vacía.");
+      return;
+    }
+    if (!imagenActual) {
+      Alert.alert("Campo requerido", "La imagen no puede estar vacía.");
+      return;
+    }
+    setModalConfirm(true);
+  };
+
+      // ── Confirmar guardado ────────────────────────────────────
+    const confirmarGuardar = async () => {
+      if (!seleccionada) return;
+      setCargandoGuardar(true);
+      try {
+        await modificarSucursalAPI(seleccionada.id_sucursal, {
+          nombre,
+          direccion,
+          imagen: imagenActual || "",
+          estado_sucursal: estado === "activo",
+        });
+        setModalConfirm(false);
+        Alert.alert("✅ Éxito", "Sucursal actualizada correctamente.");
+
+        // Actualiza la lista local incluyendo el estado
+        setSucursales((prev) =>
+          prev.map((s) =>
+            s.id_sucursal === seleccionada.id_sucursal
+              ? { ...s, nombre, direccion, imagen: imagenActual, estado_sucursal: estado === "activo" } // ← agrega estado
+              : s
+          )
+        );
+
+        // Limpia el formulario
+        setSeleccionada(null);
+        setNombre("");
+        setDireccion("");
+        setImagenActual(null);
+        setEstado("activo"); // ← resetea el estado
+      } catch (error: any) {
+        setModalConfirm(false);
+        Alert.alert("Error", error.message || "No se pudo actualizar la sucursal");
+      } finally {
+        setCargandoGuardar(false);
+      }
+    };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#0D5A52" />
 
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-              <Ionicons name="arrow-back" size={22} color={Caffiq.pineTeal} />
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.menuBtn} onPress={() => setNavbarVisible(true)}>
+          <View style={styles.menuLine} />
+          <View style={styles.menuLine} />
+          <View style={styles.menuLine} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>CAFFIQ</Text>
+        <View style={styles.logoContainer}>
+          <Text style={styles.logoEmoji}></Text>
+        </View>
+      </View>
+
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
+        <Text style={styles.pageTitle}>Modificar sucursal</Text>
+
+        {/* Dropdown con spinner */}
+        {cargandoLista ? (
+          <ActivityIndicator size="large" color="#0D5A52" style={{ marginVertical: 20 }} />
+        ) : (
+          <View style={styles.inputGroup}>
+            <TouchableOpacity
+              style={styles.dropdown}
+              onPress={() => setDropdownOpen(!dropdownOpen)}
+            >
+              <Text style={styles.dropdownText}>
+                {seleccionada ? seleccionada.nombre : "Seleccione una sucursal"}
+              </Text>
+              <Text style={styles.dropdownChevron}>{dropdownOpen ? "▲" : "▼"}</Text>
             </TouchableOpacity>
-            <Text style={styles.title}>Modificar Sucursal</Text>
-          </View>
 
-          <TouchableOpacity style={styles.imagePicker} onPress={handlePickImage} activeOpacity={0.8}>
-            {imagenMostrada ? (
-              <Image source={{ uri: imagenMostrada }} style={styles.imagePreview} />
-            ) : (
-              <View style={styles.imagePlaceholder}>
-                <Ionicons name="camera-outline" size={36} color={Caffiq.placeholder} />
-                <Text style={styles.imagePlaceholderText}>Cambiar foto</Text>
+            {dropdownOpen && (
+              <View style={styles.dropdownList}>
+                {sucursales.length === 0 ? (
+                  <Text style={{ padding: 14, color: "#999" }}>No hay sucursales</Text>
+                ) : (
+                  sucursales.map((s) => (
+                    <TouchableOpacity
+                      key={s.id_sucursal}
+                      style={styles.dropdownItem}
+                      onPress={() => seleccionar(s)}
+                    >
+                      <Text style={styles.dropdownItemText}>{s.nombre}</Text>
+                    </TouchableOpacity>
+                  ))
+                )}
               </View>
             )}
-          </TouchableOpacity>
-
-          <View style={styles.form}>
-            <Field label="Nombre *"      value={nombre}    onChangeText={setNombre}    placeholder="Nombre de la sucursal" />
-            <Field label="Dirección *"   value={direccion} onChangeText={setDireccion} placeholder="Dirección" />
-            <Field label="Ciudad *"      value={ciudad}    onChangeText={setCiudad}    placeholder="Ciudad" />
-            <Field label="Hora apertura" value={apertura}  onChangeText={setApertura}  placeholder="HH:MM  ej: 08:00" />
-            <Field label="Hora cierre"   value={cierre}    onChangeText={setCierre}    placeholder="HH:MM  ej: 22:00" />
           </View>
+        )}
 
-          <TouchableOpacity style={styles.saveBtn} onPress={handleGuardar} disabled={loading} activeOpacity={0.85}>
-            {loading ? (
-              <ActivityIndicator color={Caffiq.white} />
-            ) : (
-              <Text style={styles.saveBtnText}>Guardar cambios</Text>
-            )}
+        {/* Nombre */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Nombre de la sucursal</Text>
+          <TextInput style={styles.input} value={nombre} onChangeText={setNombre} />
+        </View>
+
+        {/* Dirección */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Dirección</Text>
+          <TextInput style={styles.input} value={direccion} onChangeText={setDireccion} />
+        </View>
+
+        {/* Estado */}
+        <View style={styles.estadoRow}>
+          <Text style={styles.label}>Estado</Text>
+          <TouchableOpacity style={styles.radioOption} onPress={() => setEstado("activo")}>
+            <View style={[styles.radioCircle, estado === "activo" && styles.radioActivo]} />
+            <Text style={styles.radioLabel}>Activo</Text>
           </TouchableOpacity>
+          <TouchableOpacity style={styles.radioOption} onPress={() => setEstado("suspendido")}>
+            <View style={[styles.radioCircle, estado === "suspendido" && styles.radioSuspendido]} />
+            <Text style={styles.radioLabel}>Suspendido</Text>
+          </TouchableOpacity>
+        </View>
 
-        </ScrollView>
-      </KeyboardAvoidingView>
+        {/* Imagen */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Imagen de la sucursal</Text>
+          {imagenActual ? (
+            <View style={styles.previewContainer}>
+              <Image source={{ uri: imagenActual }} style={styles.previewImage} />
+              <TouchableOpacity style={styles.removeBtn} onPress={quitarImagen}>
+                <Text style={styles.removeBtnText}>✕</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.changeBtn} onPress={cambiarImagen}>
+                <Text style={styles.changeBtnText}>Cambiar imagen</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity style={styles.uploadBox} onPress={cambiarImagen}>
+              <Text style={styles.uploadIcon}>⬆</Text>
+              <Text style={styles.uploadText}>Coloque un archivo aquí</Text>
+              <Text style={styles.uploadSubtext}>Toca para abrir la galería</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <TouchableOpacity
+          style={[styles.btnGuardar, cargandoGuardar && { opacity: 0.6 }]}
+          onPress={intentarGuardar}
+          disabled={cargandoGuardar}
+        >
+          {cargandoGuardar ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.btnText}>Guardar cambios</Text>
+          )}
+        </TouchableOpacity>
+      </ScrollView>
+
+      {/* Modal de confirmación */}
+      <Modal transparent visible={modalConfirm} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>¿Guardar cambios?</Text>
+            <Text style={styles.modalDesc}>
+              Se actualizará la sucursal{" "}
+              <Text style={styles.modalNombre}>"{nombre}"</Text> con los nuevos datos.
+            </Text>
+            <View style={styles.modalResumen}>
+              <Text style={styles.resumenItem}>{direccion}</Text>
+              <Text style={styles.resumenItem}>
+                Estado: {estado === "activo" ? "Activo" : "Suspendido"}
+              </Text>
+              <Text style={styles.resumenItem}>
+                Imagen: {imagenActual ? "Actualizada" : "Sin imagen"}
+              </Text>
+            </View>
+            <View style={styles.modalBtns}>
+              <TouchableOpacity style={styles.btnCancelar} onPress={() => setModalConfirm(false)}>
+                <Text style={styles.btnCancelarText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.btnConfirmar} onPress={confirmarGuardar}>
+                <Text style={styles.btnConfirmarText}>Confirmar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <NavbarLateral visible={navbarVisible} onClose={() => setNavbarVisible(false)} />
     </SafeAreaView>
   );
 }
 
-function Field({ label, value, onChangeText, placeholder }: {
-  label: string; value: string; onChangeText: (t: string) => void; placeholder?: string;
-}) {
-  return (
-    <View style={styles.fieldWrapper}>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput
-        style={styles.input}
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={Caffiq.placeholder}
-        autoCorrect={false}
-      />
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Caffiq.white },
-  scroll: { paddingHorizontal: 24, paddingBottom: 40 },
-  header: { flexDirection: "row", alignItems: "center", paddingTop: 16, marginBottom: 24, gap: 12 },
-  backBtn: { padding: 6 },
-  title: { fontSize: 22, fontWeight: "800", color: Caffiq.coffeBean },
-
-  imagePicker: {
-    width: "100%", height: 180, borderRadius: 14, overflow: "hidden",
-    marginBottom: 24, backgroundColor: Caffiq.inputBg,
-    borderWidth: 1.5, borderColor: Caffiq.inputBorder, borderStyle: "dashed",
+  container: { flex: 1, backgroundColor: "#f5f0eb" },
+  header: {
+    backgroundColor: "#0D5A52",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    paddingTop: 50,
   },
-  imagePreview: { width: "100%", height: "100%" },
-  imagePlaceholder: { flex: 1, alignItems: "center", justifyContent: "center", gap: 8 },
-  imagePlaceholderText: { fontSize: 14, color: Caffiq.placeholder },
-
-  form: { gap: 16, marginBottom: 28 },
-  fieldWrapper: { gap: 6 },
-  label: { fontSize: 13, fontWeight: "600", color: Caffiq.textMuted },
+  menuBtn: { gap: 5, padding: 4 },
+  menuLine: { width: 24, height: 2.5, backgroundColor: "#fff", borderRadius: 2 },
+  headerTitle: { fontSize: 20, fontWeight: "800", color: "#fff", letterSpacing: 3 },
+  logoContainer: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems: "center", justifyContent: "center",
+  },
+  logoEmoji: { fontSize: 20 },
+  scroll: { flex: 1 },
+  scrollContent: { padding: 20, paddingBottom: 40 },
+  pageTitle: {
+    fontSize: 24, fontWeight: "700", color: "#2C1819",
+    marginBottom: 24, fontStyle: "italic",
+  },
+  inputGroup: { marginBottom: 16 },
+  label: { fontSize: 14, color: "#2C1819", marginBottom: 6, fontWeight: "500" },
   input: {
-    backgroundColor: Caffiq.inputBg, borderRadius: 10, borderWidth: 1,
-    borderColor: Caffiq.inputBorder, paddingHorizontal: 14, height: 48,
-    fontSize: 15, color: Caffiq.textDark,
+    backgroundColor: "#6FA58B", borderRadius: 8,
+    paddingHorizontal: 14, paddingVertical: 12,
+    fontSize: 15, color: "#fff",
   },
-
-  saveBtn: {
-    backgroundColor: Caffiq.pineTeal, borderRadius: 12, paddingVertical: 15,
-    alignItems: "center", shadowColor: Caffiq.pineTeal,
-    shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3,
-    shadowRadius: 8, elevation: 5,
+  dropdown: {
+    backgroundColor: "#6FA58B", borderRadius: 8,
+    paddingHorizontal: 14, paddingVertical: 13,
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
   },
-  saveBtnText: { color: Caffiq.white, fontSize: 16, fontWeight: "700" },
+  dropdownText: { color: "#fff", fontSize: 14 },
+  dropdownChevron: { color: "#fff", fontSize: 12 },
+  dropdownList: {
+    backgroundColor: "#fff", borderRadius: 8, marginTop: 4,
+    elevation: 4, shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4,
+  },
+  dropdownItem: {
+    paddingHorizontal: 14, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: "#f0f0f0",
+  },
+  dropdownItemText: { fontSize: 14, color: "#2C1819" },
+  estadoRow: { flexDirection: "row", alignItems: "center", gap: 16, marginBottom: 16 },
+  radioOption: { flexDirection: "row", alignItems: "center", gap: 6 },
+  radioCircle: { width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: "#0D5A52" },
+  radioActivo: { backgroundColor: "#541A1A", borderColor: "#6FA58B" },
+  radioSuspendido: { backgroundColor: "#541A1A", borderColor: "#6FA58B" },
+  radioLabel: { fontSize: 14, color: "#2C1819" },
+  previewContainer: { borderRadius: 10, overflow: "hidden", position: "relative" },
+  previewImage: { width: "100%", height: 190 },
+  removeBtn: {
+    position: "absolute", top: 8, left: 8,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    width: 30, height: 30, borderRadius: 15,
+    alignItems: "center", justifyContent: "center",
+  },
+  removeBtnText: { color: "#fff", fontSize: 14, fontWeight: "700" },
+  changeBtn: {
+    position: "absolute", bottom: 0, left: 0, right: 0,
+    backgroundColor: "rgba(13,90,82,0.82)", paddingVertical: 10, alignItems: "center",
+  },
+  changeBtnText: { color: "#fff", fontSize: 14, fontWeight: "600" },
+  uploadBox: {
+    backgroundColor: "#6FA58B", borderRadius: 10, height: 140,
+    alignItems: "center", justifyContent: "center", gap: 6,
+  },
+  uploadIcon: { fontSize: 32, color: "#fff" },
+  uploadText: { fontSize: 14, color: "#fff", fontWeight: "600" },
+  uploadSubtext: { fontSize: 12, color: "rgba(255,255,255,0.75)" },
+  btnGuardar: {
+    backgroundColor: "#541A1A", borderRadius: 30,
+    paddingVertical: 16, alignItems: "center", marginTop: 24,
+  },
+  btnText: { color: "#fff", fontSize: 17, fontWeight: "700" },
+  modalOverlay: {
+    flex: 1, backgroundColor: "rgba(0,0,0,0.5)",
+    alignItems: "center", justifyContent: "center",
+  },
+  modalBox: {
+    backgroundColor: "#fff", borderRadius: 16,
+    padding: 24, width: "85%", elevation: 10,
+  },
+  modalTitle: { fontSize: 18, fontWeight: "700", color: "#0D5A52", textAlign: "center", marginBottom: 10 },
+  modalDesc: { fontSize: 14, color: "#555", textAlign: "center", marginBottom: 16, lineHeight: 20 },
+  modalNombre: { fontWeight: "700", color: "#2C1819" },
+  modalResumen: { backgroundColor: "#f0f7f4", borderRadius: 10, padding: 12, marginBottom: 20, gap: 6 },
+  resumenItem: { fontSize: 13, color: "#2C1819" },
+  modalBtns: { flexDirection: "row", gap: 10 },
+  btnCancelar: { flex: 1, backgroundColor: "#6FA58B", borderRadius: 20, paddingVertical: 12, alignItems: "center" },
+  btnCancelarText: { color: "#fff", fontWeight: "700" },
+  btnConfirmar: { flex: 1, backgroundColor: "#0D5A52", borderRadius: 20, paddingVertical: 12, alignItems: "center" },
+  btnConfirmarText: { color: "#fff", fontWeight: "700" },
 });
