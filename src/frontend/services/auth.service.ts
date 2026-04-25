@@ -35,12 +35,9 @@ const api = async <T>(
 // ─── Endpoints ────────────────────────────────────────────────────────────────
 
 interface CafeteriaDTO {
-  nom_cafeteria:     string;
-  direccion:         string;
-  ciudad:            string;
-  descripcion?:      string;
-  horario_apertura?: string;
-  horario_cierre?:   string;
+  nom_cafeteria: string;
+  ciudad:        string;
+  descripcion?:  string;
 }
 
 export const authService = {

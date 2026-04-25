@@ -30,13 +30,10 @@ export class SupabaseAuthRepository implements IAuthRepository {
       .from(T_CAFETERIAS)
       .insert([{
         admin_id,
-        nom_cafeteria:    datos.nom_cafeteria,
-        direccion:        datos.direccion,
-        ciudad:           datos.ciudad,
-        descripcion:      datos.descripcion ?? null,
-        horario_apertura: datos.horario_apertura ?? null,
-        horario_cierre:   datos.horario_cierre ?? null,
-        activa:           true,
+        nom_cafeteria: datos.nom_cafeteria,
+        ciudad:        datos.ciudad,
+        descripcion:   datos.descripcion ?? null,
+        activa:        true,
       }])
       .select()
       .single();

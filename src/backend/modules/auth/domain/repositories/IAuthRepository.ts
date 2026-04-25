@@ -10,11 +10,8 @@ export interface CreateUsuarioData {
 
 export interface CafeteriaData {
   nom_cafeteria: string;
-  direccion: string;
   ciudad: string;
   descripcion?: string;
-  horario_apertura?: string;
-  horario_cierre?: string;
 }
 
 export interface IAuthRepository {

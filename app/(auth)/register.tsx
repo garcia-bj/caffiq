@@ -122,7 +122,6 @@ export default function RegisterScreen() {
   const [password,    setPassword]             = useState("");
   const [confirmar,   setConfirmar]            = useState("");
   const [nomCafeteria,    setNomCafeteria]     = useState("");
-  const [direccion,       setDireccion]        = useState("");
   const [descripcion,     setDescripcion]      = useState("");
   const [ciudadCafeteria, setCiudadCafeteria]  = useState("");
 
@@ -155,9 +154,6 @@ export default function RegisterScreen() {
       case "nomCafeteria":
         if (!val.trim())    return "El nombre de la cafetería es requerido";
         break;
-      case "direccion":
-        if (!val.trim())    return "La dirección es requerida";
-        break;
       case "ciudadCafeteria":
         if (!val.trim())    return "La ciudad es requerida";
         break;
@@ -182,7 +178,6 @@ export default function RegisterScreen() {
     };
     if (rol === "admin") {
       newErrors.nomCafeteria    = validate("nomCafeteria",    nomCafeteria);
-      newErrors.direccion       = validate("direccion",       direccion);
       newErrors.ciudadCafeteria = validate("ciudadCafeteria", ciudadCafeteria);
     }
     setErrors(newErrors);
@@ -203,7 +198,6 @@ export default function RegisterScreen() {
         ...(rol === "admin" && {
           cafeteria: {
             nom_cafeteria: nomCafeteria.trim(),
-            direccion:     direccion.trim(),
             ciudad:        ciudadCafeteria.trim(),
             descripcion:   descripcion.trim() || undefined,
           },
@@ -308,12 +302,6 @@ export default function RegisterScreen() {
                     value={nomCafeteria} onChange={setNomCafeteria}
                     onBlur={() => setFieldError("nomCafeteria", nomCafeteria)}
                     error={errors.nomCafeteria} autoCapitalize="words"
-                  />
-                  <Field
-                    icon="location-outline" placeholder="Dirección (calle y número) *"
-                    value={direccion} onChange={setDireccion}
-                    onBlur={() => setFieldError("direccion", direccion)}
-                    error={errors.direccion} autoCapitalize="sentences"
                   />
                   <Field
                     icon="map-outline" placeholder="Ciudad *"

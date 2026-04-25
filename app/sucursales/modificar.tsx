@@ -1,4 +1,3 @@
-// frontend/screens/ModificarSucursal.tsx
 import React, { useState, useEffect } from "react";
 import {
   View, Text, TextInput, TouchableOpacity,
@@ -7,50 +6,41 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { NavbarLateral } from "@/frontend/components/navbar-lateral";
-import { getSucursalesAPI, modificarSucursalAPI, listarTodasSucursalesAPI } from "@/frontend/services/sucursalService";
-import { Sucursal } from "@/frontend/types/sucursal"; // ← tipo global, sin redefinir
+import { useAuth } from "@/frontend/context/AuthContext";
+import { sucursalesService, type SucursalPublica } from "@/frontend/services/sucursales.service";
+import { subirImagenCloudinary } from "@/frontend/services/cloudinary.service";
 
 export default function ModificarSucursal() {
+  const { token, usuario } = useAuth();
   const [navbarVisible, setNavbarVisible] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [sucursales, setSucursales] = useState<Sucursal[]>([]);
+  const [sucursales, setSucursales] = useState<SucursalPublica[]>([]);
   const [cargandoLista, setCargandoLista] = useState(true);
   const [cargandoGuardar, setCargandoGuardar] = useState(false);
-  const [seleccionada, setSeleccionada] = useState<Sucursal | null>(null);
+  const [seleccionada, setSeleccionada] = useState<SucursalPublica | null>(null);
   const [nombre, setNombre] = useState("");
   const [direccion, setDireccion] = useState("");
+  const [ciudad, setCiudad] = useState("");
   const [imagenActual, setImagenActual] = useState<string | null>(null);
   const [modalConfirm, setModalConfirm] = useState(false);
-  const [estado, setEstado] = useState<"activo" | "suspendido">("activo");
 
   useEffect(() => {
-    cargarSucursales();
-  }, []);
+    if (!token || !usuario?.cafeteria_id) return;
+    sucursalesService.listar(token, usuario.cafeteria_id)
+      .then(({ sucursales: data }) => setSucursales(data))
+      .catch(() => Alert.alert("Error", "No se pudieron cargar las sucursales"))
+      .finally(() => setCargandoLista(false));
+  }, [token, usuario?.cafeteria_id]);
 
-  // ── Cargar lista ──────────────────────────────────────────
-  const cargarSucursales = async () => {
-  setCargandoLista(true);
-  try {
-    const datos = await listarTodasSucursalesAPI(); // ← endpoint /todas
-    setSucursales(datos || []);
-  } catch (error) {
-    Alert.alert("Error", "No se pudieron cargar las sucursales");
-  } finally {
-    setCargandoLista(false);
-  }
-};
-
-  // ── Seleccionar sucursal del dropdown ─────────────────────
-  const seleccionar = (s: Sucursal) => {
+  const seleccionar = (s: SucursalPublica) => {
     setSeleccionada(s);
     setNombre(s.nombre);
-    setDireccion(s.direccion || "");   // ← null → string vacío
-    setImagenActual(s.imagen || null); // ← null seguro
-    setEstado(s.estado_sucursal === false ? "suspendido" : "activo");
+    setDireccion(s.direccion ?? "");
+    setCiudad(s.ciudad ?? "");
+    setImagenActual(s.imagen_url ?? null);
     setDropdownOpen(false);
   };
 
-  // ── Cambiar imagen desde galería ──────────────────────────
   const cambiarImagen = async () => {
     const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permiso.granted) {
@@ -59,75 +49,47 @@ export default function ModificarSucursal() {
     }
     const resultado = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [16, 9],
-      quality: 0.8,
+      allowsEditing: true, aspect: [16, 9], quality: 0.8,
     });
-    if (!resultado.canceled) {
-      setImagenActual(resultado.assets[0].uri);
-    }
+    if (!resultado.canceled) setImagenActual(resultado.assets[0].uri);
   };
 
-  // ── Quitar imagen ─────────────────────────────────────────
   const quitarImagen = () => setImagenActual(null);
 
-  // ── Validar antes de mostrar modal ────────────────────────
   const intentarGuardar = () => {
-    if (!seleccionada) {
-      Alert.alert("Sin selección", "Por favor selecciona una sucursal.");
-      return;
-    }
-    if (!nombre.trim()) {
-      Alert.alert("Campo requerido", "El nombre no puede estar vacío.");
-      return;
-    }
-    if (!direccion.trim()) {
-      Alert.alert("Campo requerido", "La dirección no puede estar vacía.");
-      return;
-    }
-    if (!imagenActual) {
-      Alert.alert("Campo requerido", "La imagen no puede estar vacía.");
-      return;
-    }
+    if (!seleccionada) { Alert.alert("Sin selección", "Selecciona una sucursal."); return; }
+    if (!nombre.trim()) { Alert.alert("Campo requerido", "El nombre no puede estar vacío."); return; }
+    if (!direccion.trim()) { Alert.alert("Campo requerido", "La dirección no puede estar vacía."); return; }
+    if (!ciudad.trim()) { Alert.alert("Campo requerido", "La ciudad no puede estar vacía."); return; }
     setModalConfirm(true);
   };
 
-      // ── Confirmar guardado ────────────────────────────────────
-    const confirmarGuardar = async () => {
-      if (!seleccionada) return;
-      setCargandoGuardar(true);
-      try {
-        await modificarSucursalAPI(seleccionada.id_sucursal, {
-          nombre,
-          direccion,
-          imagen: imagenActual || "",
-          estado_sucursal: estado === "activo",
-        });
-        setModalConfirm(false);
-        Alert.alert("✅ Éxito", "Sucursal actualizada correctamente.");
-
-        // Actualiza la lista local incluyendo el estado
-        setSucursales((prev) =>
-          prev.map((s) =>
-            s.id_sucursal === seleccionada.id_sucursal
-              ? { ...s, nombre, direccion, imagen: imagenActual, estado_sucursal: estado === "activo" } // ← agrega estado
-              : s
-          )
-        );
-
-        // Limpia el formulario
-        setSeleccionada(null);
-        setNombre("");
-        setDireccion("");
-        setImagenActual(null);
-        setEstado("activo"); // ← resetea el estado
-      } catch (error: any) {
-        setModalConfirm(false);
-        Alert.alert("Error", error.message || "No se pudo actualizar la sucursal");
-      } finally {
-        setCargandoGuardar(false);
+  const confirmarGuardar = async () => {
+    if (!seleccionada || !token || !usuario?.cafeteria_id) return;
+    setCargandoGuardar(true);
+    try {
+      let imagen_url: string | undefined = imagenActual ?? undefined;
+      // Si la imagen cambió (URI local, no URL https), subirla a Cloudinary
+      if (imagenActual && !imagenActual.startsWith("http")) {
+        imagen_url = await subirImagenCloudinary(imagenActual);
       }
-    };
+
+      const { sucursal } = await sucursalesService.modificar(
+        token, usuario.cafeteria_id, seleccionada.id,
+        { nombre, direccion, ciudad, imagen_url }
+      );
+      setModalConfirm(false);
+      Alert.alert("Éxito", "Sucursal actualizada correctamente.");
+      setSucursales((prev) => prev.map((s) => s.id === sucursal.id ? sucursal : s));
+      setSeleccionada(null);
+      setNombre(""); setDireccion(""); setCiudad(""); setImagenActual(null);
+    } catch (error: any) {
+      setModalConfirm(false);
+      Alert.alert("Error", error.message ?? "No se pudo actualizar la sucursal");
+    } finally {
+      setCargandoGuardar(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -141,18 +103,18 @@ export default function ModificarSucursal() {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>CAFFIQ</Text>
         <View style={styles.logoContainer}>
-          <Text style={styles.logoEmoji}></Text>
+          <Text style={styles.logoEmoji}>☕</Text>
         </View>
       </View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
         <Text style={styles.pageTitle}>Modificar sucursal</Text>
 
-        {/* Dropdown con spinner */}
         {cargandoLista ? (
           <ActivityIndicator size="large" color="#0D5A52" style={{ marginVertical: 20 }} />
         ) : (
           <View style={styles.inputGroup}>
+            <Text style={styles.label}>Seleccionar sucursal</Text>
             <TouchableOpacity
               style={styles.dropdown}
               onPress={() => setDropdownOpen(!dropdownOpen)}
@@ -170,7 +132,7 @@ export default function ModificarSucursal() {
                 ) : (
                   sucursales.map((s) => (
                     <TouchableOpacity
-                      key={s.id_sucursal}
+                      key={s.id}
                       style={styles.dropdownItem}
                       onPress={() => seleccionar(s)}
                     >
@@ -183,32 +145,21 @@ export default function ModificarSucursal() {
           </View>
         )}
 
-        {/* Nombre */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Nombre de la sucursal</Text>
           <TextInput style={styles.input} value={nombre} onChangeText={setNombre} />
         </View>
 
-        {/* Dirección */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Dirección</Text>
           <TextInput style={styles.input} value={direccion} onChangeText={setDireccion} />
         </View>
 
-        {/* Estado */}
-        <View style={styles.estadoRow}>
-          <Text style={styles.label}>Estado</Text>
-          <TouchableOpacity style={styles.radioOption} onPress={() => setEstado("activo")}>
-            <View style={[styles.radioCircle, estado === "activo" && styles.radioActivo]} />
-            <Text style={styles.radioLabel}>Activo</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.radioOption} onPress={() => setEstado("suspendido")}>
-            <View style={[styles.radioCircle, estado === "suspendido" && styles.radioSuspendido]} />
-            <Text style={styles.radioLabel}>Suspendido</Text>
-          </TouchableOpacity>
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Ciudad</Text>
+          <TextInput style={styles.input} value={ciudad} onChangeText={setCiudad} />
         </View>
 
-        {/* Imagen */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Imagen de la sucursal</Text>
           {imagenActual ? (
@@ -224,7 +175,7 @@ export default function ModificarSucursal() {
           ) : (
             <TouchableOpacity style={styles.uploadBox} onPress={cambiarImagen}>
               <Text style={styles.uploadIcon}>⬆</Text>
-              <Text style={styles.uploadText}>Coloque un archivo aquí</Text>
+              <Text style={styles.uploadText}>Coloca un archivo aquí</Text>
               <Text style={styles.uploadSubtext}>Toca para abrir la galería</Text>
             </TouchableOpacity>
           )}
@@ -235,15 +186,13 @@ export default function ModificarSucursal() {
           onPress={intentarGuardar}
           disabled={cargandoGuardar}
         >
-          {cargandoGuardar ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.btnText}>Guardar cambios</Text>
-          )}
+          {cargandoGuardar
+            ? <ActivityIndicator color="#fff" />
+            : <Text style={styles.btnText}>Guardar cambios</Text>
+          }
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Modal de confirmación */}
       <Modal transparent visible={modalConfirm} animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
@@ -253,10 +202,8 @@ export default function ModificarSucursal() {
               <Text style={styles.modalNombre}>"{nombre}"</Text> con los nuevos datos.
             </Text>
             <View style={styles.modalResumen}>
-              <Text style={styles.resumenItem}>{direccion}</Text>
-              <Text style={styles.resumenItem}>
-                Estado: {estado === "activo" ? "Activo" : "Suspendido"}
-              </Text>
+              <Text style={styles.resumenItem}>Dirección: {direccion}</Text>
+              <Text style={styles.resumenItem}>Ciudad: {ciudad}</Text>
               <Text style={styles.resumenItem}>
                 Imagen: {imagenActual ? "Actualizada" : "Sin imagen"}
               </Text>
@@ -282,12 +229,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f5f0eb" },
   header: {
     backgroundColor: "#0D5A52",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    paddingTop: 50,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingHorizontal: 16, paddingVertical: 14, paddingTop: 50,
   },
   menuBtn: { gap: 5, padding: 4 },
   menuLine: { width: 24, height: 2.5, backgroundColor: "#fff", borderRadius: 2 },
@@ -300,10 +243,7 @@ const styles = StyleSheet.create({
   logoEmoji: { fontSize: 20 },
   scroll: { flex: 1 },
   scrollContent: { padding: 20, paddingBottom: 40 },
-  pageTitle: {
-    fontSize: 24, fontWeight: "700", color: "#2C1819",
-    marginBottom: 24, fontStyle: "italic",
-  },
+  pageTitle: { fontSize: 24, fontWeight: "700", color: "#2C1819", marginBottom: 24, fontStyle: "italic" },
   inputGroup: { marginBottom: 16 },
   label: { fontSize: 14, color: "#2C1819", marginBottom: 6, fontWeight: "500" },
   input: {
@@ -328,12 +268,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: "#f0f0f0",
   },
   dropdownItemText: { fontSize: 14, color: "#2C1819" },
-  estadoRow: { flexDirection: "row", alignItems: "center", gap: 16, marginBottom: 16 },
-  radioOption: { flexDirection: "row", alignItems: "center", gap: 6 },
-  radioCircle: { width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: "#0D5A52" },
-  radioActivo: { backgroundColor: "#541A1A", borderColor: "#6FA58B" },
-  radioSuspendido: { backgroundColor: "#541A1A", borderColor: "#6FA58B" },
-  radioLabel: { fontSize: 14, color: "#2C1819" },
   previewContainer: { borderRadius: 10, overflow: "hidden", position: "relative" },
   previewImage: { width: "100%", height: 190 },
   removeBtn: {
@@ -364,10 +298,7 @@ const styles = StyleSheet.create({
     flex: 1, backgroundColor: "rgba(0,0,0,0.5)",
     alignItems: "center", justifyContent: "center",
   },
-  modalBox: {
-    backgroundColor: "#fff", borderRadius: 16,
-    padding: 24, width: "85%", elevation: 10,
-  },
+  modalBox: { backgroundColor: "#fff", borderRadius: 16, padding: 24, width: "85%", elevation: 10 },
   modalTitle: { fontSize: 18, fontWeight: "700", color: "#0D5A52", textAlign: "center", marginBottom: 10 },
   modalDesc: { fontSize: 14, color: "#555", textAlign: "center", marginBottom: 16, lineHeight: 20 },
   modalNombre: { fontWeight: "700", color: "#2C1819" },

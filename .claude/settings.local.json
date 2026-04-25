@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(npx expo *)",
+      "Bash(npx tsc *)",
+      "Bash(git -C b:/Caffiq stash push -m \"trabajo-ddd-local\")"
     ]
   }
 }

@@ -9,7 +9,7 @@ export class SupabaseCafeteriaRepository implements ICafeteriaRepository {
   async listar(): Promise<CafeteriaEntity[]> {
     const { data, error } = await supabaseAdmin
       .from(TABLA)
-      .select("id, admin_id, nom_cafeteria, direccion, ciudad, descripcion, horario_apertura, horario_cierre, activa, created_at")
+      .select("id, admin_id, nom_cafeteria, ciudad, descripcion, activa, created_at")
       .eq("activa", true)
       .order("created_at", { ascending: false });
 
@@ -20,7 +20,7 @@ export class SupabaseCafeteriaRepository implements ICafeteriaRepository {
   async buscarPorId(id: string): Promise<CafeteriaEntity | null> {
     const { data, error } = await supabaseAdmin
       .from(TABLA)
-      .select("id, admin_id, nom_cafeteria, direccion, ciudad, descripcion, horario_apertura, horario_cierre, activa, created_at")
+      .select("id, admin_id, nom_cafeteria, ciudad, descripcion, activa, created_at")
       .eq("id", id)
       .maybeSingle();
 

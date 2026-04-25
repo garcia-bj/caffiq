@@ -1,14 +1,12 @@
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000/api";
 
 export interface CafeteriaPublica {
-  id:               string;
-  nom_cafeteria:    string;
-  ciudad:           string;
-  descripcion:      string | null;
-  horario_apertura: string | null;
-  horario_cierre:   string | null;
-  activa:           boolean;
-  created_at:       string;
+  id:          string;
+  nom_cafeteria: string;
+  ciudad:      string;
+  descripcion: string | null;
+  activa:      boolean;
+  created_at:  string;
 }
 
 export interface SucursalPublica {
