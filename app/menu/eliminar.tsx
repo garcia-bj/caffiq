@@ -1,26 +1,58 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View, Text, TouchableOpacity, StyleSheet,
   SafeAreaView, StatusBar, ScrollView, Image, Modal,
+  ActivityIndicator, Alert,
 } from "react-native";
 import { NavbarLateral } from "@/frontend/components/navbar-lateral";
-import { SUCURSALES, getProductosPorSucursal, Producto } from "@/backend/menu-data";
 import { Ionicons } from "@expo/vector-icons";
+import { getSucursalesAPI } from "@/frontend/services/sucursalService";
+import { listarProductosAPI, suspenderProductoAPI } from "@/frontend/services/menuService";
+import { Sucursal } from "@/frontend/types/sucursal";
+import { Producto } from "@/frontend/types/producto";
 
 export default function EliminarProductoMenu() {
   const [navbarVisible, setNavbarVisible] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [sucursalId, setSucursalId] = useState<number | null>(null);
+  const [sucursales, setSucursales] = useState<Sucursal[]>([]);
+  const [cargandoLista, setCargandoLista] = useState(true);
+  const [cargandoProductos, setCargandoProductos] = useState(false);
+  const [cargandoEliminar, setCargandoEliminar] = useState(false);
+  const [sucursalId, setSucursalId] = useState<string | null>(null);
+  const [sucursalNombre, setSucursalNombre] = useState<string>("");
   const [productos, setProductos] = useState<Producto[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [productoAEliminar, setProductoAEliminar] = useState<Producto | null>(null);
 
-  const sucursalNombre = SUCURSALES.find((s) => s.id === sucursalId)?.nombre;
+  useEffect(() => {
+    cargarSucursales();
+  }, []);
 
-  const seleccionarSucursal = (id: number) => {
+  const cargarSucursales = async () => {
+    setCargandoLista(true);
+    try {
+      const datos = await getSucursalesAPI();
+      setSucursales(datos || []);
+    } catch (error) {
+      Alert.alert("Error", "No se pudieron cargar las sucursales");
+    } finally {
+      setCargandoLista(false);
+    }
+  };
+
+  const seleccionarSucursal = async (id: string, nombre: string) => {
     setSucursalId(id);
-    setProductos(getProductosPorSucursal(id));
+    setSucursalNombre(nombre);
     setDropdownOpen(false);
+    setCargandoProductos(true);
+    try {
+      const datos = await listarProductosAPI(id); // ← todos los productos de la sucursal
+      setProductos((datos || []).filter((p) => p.estado === true));
+    } catch (error) {
+      Alert.alert("Error", "No se pudieron cargar los productos");
+    } finally {
+      setCargandoProductos(false);
+    }
   };
 
   const abrirModal = (p: Producto) => {
@@ -28,12 +60,22 @@ export default function EliminarProductoMenu() {
     setModalVisible(true);
   };
 
-  const confirmarEliminar = () => {
-    if (productoAEliminar) {
-      setProductos((prev) => prev.filter((p) => p.id !== productoAEliminar.id));
+  const confirmarEliminar = async () => {
+    if (!productoAEliminar) return;
+    setCargandoEliminar(true);
+    try {
+      await suspenderProductoAPI(productoAEliminar.id_producto);
+      // Quita el producto de la lista local
+      setProductos((prev) =>
+        prev.filter((p) => p.id_producto !== productoAEliminar.id_producto)
+      );
+      setModalVisible(false);
+      setProductoAEliminar(null);
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "No se pudo eliminar el producto");
+    } finally {
+      setCargandoEliminar(false);
     }
-    setModalVisible(false);
-    setProductoAEliminar(null);
   };
 
   return (
@@ -51,43 +93,73 @@ export default function EliminarProductoMenu() {
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
         <Text style={styles.pageTitle}>Eliminar Producto</Text>
 
-        {/* Dropdown */}
+        {/* Dropdown sucursal */}
         <View style={styles.inputGroup}>
-          <TouchableOpacity style={styles.dropdown} onPress={() => setDropdownOpen(!dropdownOpen)}>
-            <Text style={styles.dropdownText}>{sucursalNombre ?? "Seleccione una sucursal"}</Text>
-            <Text style={styles.dropdownChevron}>{dropdownOpen ? "▲" : "▼"}</Text>
-          </TouchableOpacity>
-          {dropdownOpen && (
-            <View style={styles.dropdownList}>
-              {SUCURSALES.map((s) => (
-                <TouchableOpacity key={s.id} style={styles.dropdownItem} onPress={() => seleccionarSucursal(s.id)}>
-                  <Text style={styles.dropdownItemText}>{s.nombre}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+          {cargandoLista ? (
+            <ActivityIndicator size="small" color="#0D5A52" />
+          ) : (
+            <>
+              <TouchableOpacity
+                style={styles.dropdown}
+                onPress={() => setDropdownOpen(!dropdownOpen)}
+              >
+                <Text style={styles.dropdownText}>
+                  {sucursalNombre || "Seleccione una sucursal"}
+                </Text>
+                <Text style={styles.dropdownChevron}>{dropdownOpen ? "▲" : "▼"}</Text>
+              </TouchableOpacity>
+
+              {dropdownOpen && (
+                <View style={styles.dropdownList}>
+                  {sucursales.map((s) => (
+                    <TouchableOpacity
+                      key={s.id_sucursal}
+                      style={styles.dropdownItem}
+                      onPress={() => seleccionarSucursal(s.id_sucursal, s.nombre)}
+                    >
+                      <Text style={styles.dropdownItemText}>{s.nombre}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </>
           )}
         </View>
 
         {/* Grid productos */}
         {sucursalId && (
           <>
-            <Text style={styles.sectionTitle}>Menu de ({sucursalNombre})</Text>
-            <View style={styles.grid}>
-              {productos.map((p) => (
-                <View key={p.id} style={styles.card}>
-                  <Image source={{ uri: p.imagen }} style={styles.cardImage} />
-
-                  <TouchableOpacity style={styles.deleteBtn} onPress={() => abrirModal(p)}>
-                    <Ionicons name="trash-outline" size={18} color="#fff" />
-                 </TouchableOpacity>
-
-                  <View style={styles.cardInfo}>
-                    <Text style={styles.cardNombre} numberOfLines={2}>{p.nombre}</Text>
-                    <Text style={styles.cardPrecio}>$ {p.precio.toFixed(2)}</Text>
+            <Text style={styles.sectionTitle}>Menú de ({sucursalNombre})</Text>
+            {cargandoProductos ? (
+              <ActivityIndicator size="large" color="#0D5A52" style={{ marginTop: 20 }} />
+            ) : productos.length === 0 ? (
+              <Text style={{ color: "#999", textAlign: "center", marginTop: 20 }}>
+                No hay productos en esta sucursal
+              </Text>
+            ) : (
+              <View style={styles.grid}>
+                {productos.map((p) => (
+                  <View key={p.id_producto} style={styles.card}>
+                    <Image
+                      source={{ uri: p.imagen_producto || undefined }}
+                      style={styles.cardImage}
+                    />
+                    <TouchableOpacity
+                      style={styles.deleteBtn}
+                      onPress={() => abrirModal(p)}
+                    >
+                      <Ionicons name="trash-outline" size={18} color="#fff" />
+                    </TouchableOpacity>
+                    <View style={styles.cardInfo}>
+                      <Text style={styles.cardNombre} numberOfLines={2}>
+                        {p.nom_producto}
+                      </Text>
+                      <Text style={styles.cardPrecio}>$ {p.precio?.toFixed(2)}</Text>
+                    </View>
                   </View>
-                </View>
-              ))}
-            </View>
+                ))}
+              </View>
+            )}
           </>
         )}
       </ScrollView>
@@ -96,17 +168,28 @@ export default function EliminarProductoMenu() {
       <Modal transparent visible={modalVisible} animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>¿Esta seguro de eliminar este Producto?</Text>
+            <Text style={styles.modalTitle}>¿Está seguro de eliminar este producto?</Text>
             <Text style={styles.modalDesc}>
-              Se eliminara la sucursal{" "}
-              <Text style={styles.modalNombre}>{productoAEliminar?.nombre}</Text>
-              {" "}ya no aprecera para los demas usuarios en la lista de sucursales
+              Se eliminará el producto{" "}
+              <Text style={styles.modalNombre}>{productoAEliminar?.nom_producto}</Text>
+              {" "}y ya no aparecerá para los usuarios.
             </Text>
             <View style={styles.modalBtns}>
-              <TouchableOpacity style={styles.btnEliminar} onPress={confirmarEliminar}>
-                <Text style={styles.btnEliminarText}>Eliminar</Text>
+              <TouchableOpacity
+                style={[styles.btnEliminar, cargandoEliminar && { opacity: 0.6 }]}
+                onPress={confirmarEliminar}
+                disabled={cargandoEliminar}
+              >
+                {cargandoEliminar
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={styles.btnEliminarText}>Eliminar</Text>
+                }
               </TouchableOpacity>
-              <TouchableOpacity style={styles.btnCancelar} onPress={() => setModalVisible(false)}>
+              <TouchableOpacity
+                style={styles.btnCancelar}
+                onPress={() => setModalVisible(false)}
+                disabled={cargandoEliminar}
+              >
                 <Text style={styles.btnCancelarText}>Cancelar</Text>
               </TouchableOpacity>
             </View>
@@ -142,7 +225,6 @@ const styles = StyleSheet.create({
   card: { width: "47%", borderRadius: 12, overflow: "hidden", backgroundColor: "#fff", elevation: 3, position: "relative" },
   cardImage: { width: "100%", height: 110 },
   deleteBtn: { position: "absolute", top: 6, right: 6, backgroundColor: "#6FA58B", width: 30, height: 30, borderRadius: 6, alignItems: "center", justifyContent: "center", elevation: 4 },
-  deleteBtnText: { fontSize: 15 },
   cardInfo: { padding: 8 },
   cardNombre: { fontSize: 12, fontWeight: "600", color: "#2C1819", marginBottom: 2 },
   cardPrecio: { fontSize: 13, fontWeight: "700", color: "#541A1A" },

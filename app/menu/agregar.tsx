@@ -1,28 +1,50 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, SafeAreaView, StatusBar,
   ScrollView, Modal, Alert, ImageBackground,
+  ActivityIndicator,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { NavbarLateral } from "@/frontend/components/navbar-lateral";
-import { SUCURSALES } from "@/backend/menu-data";
-
-//const FONDO = require("../../../assets/images/fondo-cafe.png");
+import { agregarProductoAPI } from "@/frontend/services/menuService";
+import { getSucursalesAPI } from "@/frontend/services/sucursalService";
+import { subirImagenCloudinary } from "@/frontend/services/cloudinary";
+import { Sucursal } from "@/frontend/types/sucursal";
 
 export default function AgregarProductoMenu() {
   const [navbarVisible, setNavbarVisible] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [sucursalId, setSucursalId] = useState<number | null>(null);
+  const [sucursales, setSucursales] = useState<Sucursal[]>([]);       // ← desde la API
+  const [cargandoLista, setCargandoLista] = useState(true);
+  const [sucursalId, setSucursalId] = useState<string | null>(null);  // ← string UUID
+  const [sucursalNombre, setSucursalNombre] = useState<string>("");
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [precio, setPrecio] = useState("");
   const [stock, setStock] = useState("");
   const [imagen, setImagen] = useState<string | null>(null);
   const [modalConfirm, setModalConfirm] = useState(false);
+  const [cargandoGuardar, setCargandoGuardar] = useState(false);
 
-  const sucursalNombre = SUCURSALES.find((s) => s.id === sucursalId)?.nombre;
+  // ── Cargar sucursales al iniciar ──────────────────────────
+  useEffect(() => {
+    cargarSucursales();
+  }, []);
 
+  const cargarSucursales = async () => {
+    setCargandoLista(true);
+    try {
+      const datos = await getSucursalesAPI(); // ← solo activas
+      setSucursales(datos || []);
+    } catch (error) {
+      Alert.alert("Error", "No se pudieron cargar las sucursales");
+    } finally {
+      setCargandoLista(false);
+    }
+  };
+
+  // ── Seleccionar imagen ────────────────────────────────────
   const seleccionarImagen = async () => {
     const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permiso.granted) {
@@ -38,6 +60,7 @@ export default function AgregarProductoMenu() {
     if (!resultado.canceled) setImagen(resultado.assets[0].uri);
   };
 
+  // ── Validar antes de mostrar modal ────────────────────────
   const intentarRegistrar = () => {
     if (!sucursalId) return Alert.alert("Requerido", "Selecciona una sucursal.");
     if (!nombre.trim()) return Alert.alert("Requerido", "Ingresa el nombre del producto.");
@@ -45,20 +68,45 @@ export default function AgregarProductoMenu() {
     setModalConfirm(true);
   };
 
-  const confirmarRegistro = () => {
+  // ── Confirmar y guardar ───────────────────────────────────
+  const confirmarRegistro = async () => {
+    if (!sucursalId) return;
+    setCargandoGuardar(true);
     setModalConfirm(false);
-    // Aquí irá la llamada a Supabase
-    console.log({ sucursalId, nombre, descripcion, precio, stock, imagen });
-    Alert.alert("✅ Éxito", "Producto registrado correctamente.");
-    setNombre(""); setDescripcion(""); setPrecio("");
-    setStock(""); setImagen(null); setSucursalId(null);
+    try {
+      let urlImagen = "";
+      if (imagen) {
+        urlImagen = await subirImagenCloudinary(imagen);
+      }
+
+      await agregarProductoAPI({
+        id_sucursal: sucursalId,
+        nom_producto: nombre,
+        descripcion: descripcion || undefined,
+        precio,
+        stock: stock || undefined,
+        imagen_producto: urlImagen || undefined,
+      });
+
+      Alert.alert("✅ Éxito", "Producto registrado correctamente.");
+      setNombre("");
+      setDescripcion("");
+      setPrecio("");
+      setStock("");
+      setImagen(null);
+      setSucursalId(null);
+      setSucursalNombre("");
+    } catch (err: any) {
+      Alert.alert("Error", err.message || "Ocurrió un error inesperado");
+    } finally {
+      setCargandoGuardar(false);
+    }
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0D5A52" />
 
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.menuBtn} onPress={() => setNavbarVisible(true)}>
           <View style={styles.menuLine} /><View style={styles.menuLine} /><View style={styles.menuLine} />
@@ -68,26 +116,42 @@ export default function AgregarProductoMenu() {
       </View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
-
         <Text style={styles.pageTitle}>Agregar Producto al Menu</Text>
 
         {/* Dropdown sucursal */}
         <View style={styles.inputGroup}>
-          <TouchableOpacity style={styles.dropdown} onPress={() => setDropdownOpen(!dropdownOpen)}>
-            <Text style={styles.dropdownText}>
-              {sucursalNombre ?? "Seleccione una sucursal"}
-            </Text>
-            <Text style={styles.dropdownChevron}>{dropdownOpen ? "▲" : "▼"}</Text>
-          </TouchableOpacity>
-          {dropdownOpen && (
-            <View style={styles.dropdownList}>
-              {SUCURSALES.map((s) => (
-                <TouchableOpacity key={s.id} style={styles.dropdownItem}
-                  onPress={() => { setSucursalId(s.id); setDropdownOpen(false); }}>
-                  <Text style={styles.dropdownItemText}>{s.nombre}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+          {cargandoLista ? (
+            <ActivityIndicator size="small" color="#0D5A52" />
+          ) : (
+            <>
+              <TouchableOpacity
+                style={styles.dropdown}
+                onPress={() => setDropdownOpen(!dropdownOpen)}
+              >
+                <Text style={styles.dropdownText}>
+                  {sucursalNombre || "Seleccione una sucursal"}
+                </Text>
+                <Text style={styles.dropdownChevron}>{dropdownOpen ? "▲" : "▼"}</Text>
+              </TouchableOpacity>
+
+              {dropdownOpen && (
+                <View style={styles.dropdownList}>
+                  {sucursales.map((s) => (
+                    <TouchableOpacity
+                      key={s.id_sucursal}
+                      style={styles.dropdownItem}
+                      onPress={() => {
+                        setSucursalId(s.id_sucursal);
+                        setSucursalNombre(s.nombre);
+                        setDropdownOpen(false);
+                      }}
+                    >
+                      <Text style={styles.dropdownItemText}>{s.nombre}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </>
           )}
         </View>
 
@@ -109,7 +173,7 @@ export default function AgregarProductoMenu() {
           />
         </View>
 
-        {/* Precio y Stock en fila */}
+        {/* Precio y Stock */}
         <View style={styles.rowGroup}>
           <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
             <Text style={styles.label}>Precio</Text>
@@ -131,7 +195,7 @@ export default function AgregarProductoMenu() {
                   <Text style={styles.removeBtnText}>✕</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.changeBtn} onPress={seleccionarImagen}>
-                  <Text style={styles.changeBtnText}>📷  Cambiar imagen</Text>
+                  <Text style={styles.changeBtnText}>📷 Cambiar imagen</Text>
                 </TouchableOpacity>
               </ImageBackground>
             </View>
@@ -144,8 +208,15 @@ export default function AgregarProductoMenu() {
           )}
         </View>
 
-        <TouchableOpacity style={styles.btnRegistrar} onPress={intentarRegistrar}>
-          <Text style={styles.btnText}>Registrar</Text>
+        <TouchableOpacity
+          style={[styles.btnRegistrar, cargandoGuardar && { opacity: 0.6 }]}
+          onPress={intentarRegistrar}
+          disabled={cargandoGuardar}
+        >
+          {cargandoGuardar
+            ? <ActivityIndicator color="#fff" />
+            : <Text style={styles.btnText}>Registrar</Text>
+          }
         </TouchableOpacity>
       </ScrollView>
 
@@ -160,7 +231,7 @@ export default function AgregarProductoMenu() {
             </Text>
             <View style={styles.modalResumen}>
               <Text style={styles.resumenItem}>💰 Precio: ${precio}</Text>
-              <Text style={styles.resumenItem}>📦 Stock: {stock}</Text>
+              <Text style={styles.resumenItem}>📦 Stock: {stock || "No especificado"}</Text>
               <Text style={styles.resumenItem}>🖼 Foto: {imagen ? "Seleccionada ✓" : "Sin foto"}</Text>
             </View>
             <View style={styles.modalBtns}>

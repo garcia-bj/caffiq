@@ -1,30 +1,55 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   SafeAreaView, StatusBar, ScrollView,
-  ImageBackground, Modal, Alert,
+  ImageBackground, Modal, Alert, ActivityIndicator,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { NavbarLateral } from "@/frontend/components/navbar-lateral";
-import { PRODUCTOS, EstadoProducto } from "@/backend/menu-data";
+import { modificarProductoAPI } from "@/frontend/services/menuService";
+import { subirImagenCloudinary } from "@/frontend/services/cloudinary";
+import { api } from "@/frontend/services/api";
+import { Producto } from "@/frontend/types/producto";
 
 export default function EditarProducto() {
   const router = useRouter();
   const { productoId } = useLocalSearchParams();
   const [navbarVisible, setNavbarVisible] = useState(false);
   const [modalConfirm, setModalConfirm] = useState(false);
+  const [cargando, setCargando] = useState(true);
+  const [cargandoGuardar, setCargandoGuardar] = useState(false);
+  const [producto, setProducto] = useState<Producto | null>(null);
 
-  // Buscar producto por id
-  const productoOriginal = PRODUCTOS.find((p) => p.id === Number(productoId));
+  const [nombre, setNombre] = useState("");
+  const [descripcion, setDescripcion] = useState("");
+  const [precio, setPrecio] = useState("");
+  const [stock, setStock] = useState("");
+  const [imagen, setImagen] = useState<string | null>(null);
+  const [suspendido, setSuspendido] = useState(false); // ← controla si está suspendido
 
-  const [nombre, setNombre] = useState(productoOriginal?.nombre ?? "");
-  const [descripcion, setDescripcion] = useState(productoOriginal?.descripcion ?? "");
-  const [precio, setPrecio] = useState(String(productoOriginal?.precio ?? ""));
-  const [stock, setStock] = useState(String(productoOriginal?.stock ?? ""));
-  const [estado, setEstado] = useState<EstadoProducto>(productoOriginal?.estado ?? "disponible");
-  const [imagen, setImagen] = useState<string | null>(productoOriginal?.imagen ?? null);
+  useEffect(() => {
+    cargarProducto();
+  }, []);
+
+  const cargarProducto = async () => {
+    setCargando(true);
+    try {
+      const datos = await api(`/api/menu/${productoId}`, { method: "GET" });
+      setProducto(datos);
+      setNombre(datos.nom_producto || "");
+      setDescripcion(datos.descripcion || "");
+      setPrecio(String(datos.precio || ""));
+      setStock(String(datos.stock || ""));
+      setImagen(datos.imagen_producto || null);
+      setSuspendido(!datos.estado); // ← si estado = false → suspendido = true
+    } catch (error) {
+      Alert.alert("Error", "No se pudo cargar el producto");
+    } finally {
+      setCargando(false);
+    }
+  };
 
   const cambiarImagen = async () => {
     const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -45,16 +70,60 @@ export default function EditarProducto() {
     setModalConfirm(true);
   };
 
-  const confirmarGuardar = () => {
+  const confirmarGuardar = async () => {
+    setCargandoGuardar(true);
     setModalConfirm(false);
-    // Aquí irá la llamada a Supabase
-    console.log({ id: productoId, nombre, descripcion, precio, stock, estado, imagen });
-    Alert.alert("✅ Éxito", "Producto actualizado correctamente.", [
-      { text: "OK", onPress: () => router.back() },
-    ]);
+    try {
+      let urlImagen = imagen || "";
+      if (imagen && imagen.startsWith("file://")) {
+        urlImagen = await subirImagenCloudinary(imagen);
+      }
+
+      const stockNum = stock ? parseInt(stock) : 0;
+
+      // Si está suspendido → estado = false
+      // Si está activo → estado depende del stock
+      const estadoFinal = !suspendido;
+
+      await modificarProductoAPI(productoId as string, {
+        nom_producto: nombre,
+        descripcion: descripcion || undefined,
+        precio,
+        stock: String(stockNum),
+        imagen_producto: urlImagen || undefined,
+        estado: estadoFinal,
+      });
+
+      Alert.alert("✅ Éxito", "Producto actualizado correctamente.", [
+        { text: "OK", onPress: () => router.back() },
+      ]);
+    } catch (error: any) {
+      Alert.alert("Error", error.message || "No se pudo actualizar el producto");
+    } finally {
+      setCargandoGuardar(false);
+    }
   };
 
-  if (!productoOriginal) {
+  // ── Badge informativo ─────────────────────────────────────
+  const stockNum = stock ? parseInt(stock) : 0;
+
+  const getBadge = () => {
+    if (suspendido) return { label: "Suspendido", color: "#888888" };
+    if (stockNum > 0) return { label: "Disponible", color: "#0D5A52" };
+    return { label: "No disponible", color: "#541A1A" };
+  };
+
+  const badge = getBadge();
+
+  if (cargando) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ActivityIndicator size="large" color="#0D5A52" style={{ flex: 1 }} />
+      </SafeAreaView>
+    );
+  }
+
+  if (!producto) {
     return (
       <SafeAreaView style={styles.container}>
         <Text style={{ padding: 20, color: "#541A1A" }}>Producto no encontrado.</Text>
@@ -76,7 +145,6 @@ export default function EditarProducto() {
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
 
-        {/* Botón volver */}
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color="#0D5A52" />
           <Text style={styles.backText}>Volver</Text>
@@ -104,25 +172,54 @@ export default function EditarProducto() {
         <View style={styles.rowGroup}>
           <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
             <Text style={styles.label}>Precio</Text>
-            <TextInput style={styles.input} value={precio} onChangeText={setPrecio} keyboardType="decimal-pad" />
+            <TextInput
+              style={styles.input} value={precio}
+              onChangeText={setPrecio} keyboardType="decimal-pad"
+            />
           </View>
           <View style={[styles.inputGroup, { flex: 1 }]}>
             <Text style={styles.label}>Stock</Text>
-            <TextInput style={styles.input} value={stock} onChangeText={setStock} keyboardType="number-pad" />
+            <TextInput
+              style={styles.input} value={stock}
+              onChangeText={setStock} keyboardType="number-pad"
+            />
           </View>
         </View>
 
-        {/* Estado */}
-        <View style={styles.estadoRow}>
-          <Text style={styles.label}>Estado</Text>
-          <TouchableOpacity style={styles.radioOption} onPress={() => setEstado("disponible")}>
-            <View style={[styles.radioCircle, estado === "disponible" && styles.radioDisponible]} />
-            <Text style={styles.radioLabel}>Disponible</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.radioOption} onPress={() => setEstado("no_disponible")}>
-            <View style={[styles.radioCircle, estado === "no_disponible" && styles.radioNoDisponible]} />
-            <Text style={styles.radioLabel}>No Disponible</Text>
-          </TouchableOpacity>
+        {/* Estado — checks manuales */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Estado del producto</Text>
+          <View style={styles.estadoRow}>
+            {/* Activo */}
+            <TouchableOpacity
+              style={styles.radioOption}
+              onPress={() => setSuspendido(false)}
+            >
+              <View style={[styles.radioCircle, !suspendido && styles.radioActivo]} />
+              <Text style={styles.radioLabel}>Activo</Text>
+            </TouchableOpacity>
+
+            {/* Suspendido */}
+            <TouchableOpacity
+              style={styles.radioOption}
+              onPress={() => setSuspendido(true)}
+            >
+              <View style={[styles.radioCircle, suspendido && styles.radioSuspendido]} />
+              <Text style={styles.radioLabel}>Suspendido</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Badge informativo */}
+          <View style={styles.badgeRow}>
+            <View style={[styles.estadoBadge, { backgroundColor: badge.color }]}>
+              <Text style={styles.estadoBadgeText}>{badge.label}</Text>
+            </View>
+            {!suspendido && (
+              <Text style={styles.estadoHint}>
+                (Disponibilidad según stock)
+              </Text>
+            )}
+          </View>
         </View>
 
         {/* Imagen */}
@@ -153,8 +250,15 @@ export default function EditarProducto() {
           )}
         </View>
 
-        <TouchableOpacity style={styles.btnGuardar} onPress={intentarGuardar}>
-          <Text style={styles.btnText}>Guardar cambios</Text>
+        <TouchableOpacity
+          style={[styles.btnGuardar, cargandoGuardar && { opacity: 0.6 }]}
+          onPress={intentarGuardar}
+          disabled={cargandoGuardar}
+        >
+          {cargandoGuardar
+            ? <ActivityIndicator color="#fff" />
+            : <Text style={styles.btnText}>Guardar cambios</Text>
+          }
         </TouchableOpacity>
       </ScrollView>
 
@@ -169,9 +273,7 @@ export default function EditarProducto() {
             <View style={styles.modalResumen}>
               <Text style={styles.resumenItem}>💰 Precio: ${precio}</Text>
               <Text style={styles.resumenItem}>📦 Stock: {stock}</Text>
-              <Text style={styles.resumenItem}>
-                🔘 Estado: {estado === "disponible" ? "Disponible" : "No disponible"}
-              </Text>
+              <Text style={styles.resumenItem}>🔘 Estado: {badge.label}</Text>
             </View>
             <View style={styles.modalBtns}>
               <TouchableOpacity style={styles.btnCancelar} onPress={() => setModalConfirm(false)}>
@@ -208,12 +310,16 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, color: "#2C1819", marginBottom: 5, fontWeight: "500" },
   input: { backgroundColor: "#6FA58B", borderRadius: 8, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: "#fff" },
   inputMultiline: { height: 100, paddingTop: 12 },
-  estadoRow: { flexDirection: "row", alignItems: "center", gap: 16, marginBottom: 14 },
+  estadoRow: { flexDirection: "row", alignItems: "center", gap: 20, marginBottom: 10 },
   radioOption: { flexDirection: "row", alignItems: "center", gap: 6 },
   radioCircle: { width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: "#0D5A52" },
-  radioDisponible: { backgroundColor: "#541A1A", borderColor: "#541A1A" },
-  radioNoDisponible: { backgroundColor: "#6FA58B", borderColor: "#6FA58B" },
+  radioActivo: { backgroundColor: "#0D5A52", borderColor: "#0D5A52" },
+  radioSuspendido: { backgroundColor: "#888888", borderColor: "#888888" },
   radioLabel: { fontSize: 13, color: "#2C1819" },
+  badgeRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 },
+  estadoBadge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
+  estadoBadgeText: { color: "#fff", fontSize: 12, fontWeight: "700" },
+  estadoHint: { fontSize: 11, color: "#999", fontStyle: "italic" },
   previewContainer: { borderRadius: 10, overflow: "hidden" },
   previewImage: { width: "100%", height: 200, justifyContent: "space-between" },
   removeBtn: { margin: 8, backgroundColor: "rgba(0,0,0,0.6)", width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center" },
