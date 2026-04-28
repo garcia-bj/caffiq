@@ -5,6 +5,7 @@ import cafeteriasRoutes from "@modules/cafeterias/interfaces/cafeterias.routes";
 import productosRoutes from "@modules/productos/interfaces/productos.routes";
 import { errorHandler } from "@shared/errors/error.handler";
 import { SupabaseSucursalRepository } from "@modules/cafeterias/infrastructure/repositories/SupabaseSucursalRepository";
+import menuRoutes from "./src/modules/menu/interfaces/routes";
 
 const app = express();
 
@@ -22,6 +23,9 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/cafeterias", cafeteriasRoutes);
 app.use("/api/cafeterias/:cafeteria_id/productos", productosRoutes);
+
+// Rutas del módulo menú (legacy compatible)
+app.use("/api/menu", menuRoutes);
 
 // GET /api/sucursales — listado global de sucursales activas (usado por pantallas de menú)
 app.get("/api/sucursales", async (_req, res, next) => {
