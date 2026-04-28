@@ -113,9 +113,9 @@ export default function EliminarProductoMenu() {
                 <View style={styles.dropdownList}>
                   {sucursales.map((s) => (
                     <TouchableOpacity
-                      key={s.id_sucursal}
+                      key={s.id}
                       style={styles.dropdownItem}
-                      onPress={() => seleccionarSucursal(s.id_sucursal, s.nombre)}
+                      onPress={() => seleccionarSucursal(s.id, s.nombre)}
                     >
                       <Text style={styles.dropdownItemText}>{s.nombre}</Text>
                     </TouchableOpacity>

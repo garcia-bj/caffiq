@@ -82,6 +82,17 @@ export class SupabaseSucursalRepository implements ISucursalRepository {
     if (error) throw new Error(error.message);
   }
 
+  async listarTodas(): Promise<SucursalEntity[]> {
+    const { data, error } = await supabaseAdmin
+      .from(TABLA)
+      .select("*")
+      .eq("activa", true)
+      .order("nombre", { ascending: true });
+
+    if (error) throw new Error(error.message);
+    return (data ?? []) as SucursalEntity[];
+  }
+
   async existeNombreEnCafeteria(nombre: string, cafeteria_id: string, excluirId?: string): Promise<boolean> {
     let query = supabaseAdmin
       .from(TABLA)

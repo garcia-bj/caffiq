@@ -138,10 +138,10 @@ export default function AgregarProductoMenu() {
                 <View style={styles.dropdownList}>
                   {sucursales.map((s) => (
                     <TouchableOpacity
-                      key={s.id_sucursal}
+                      key={s.id}
                       style={styles.dropdownItem}
                       onPress={() => {
-                        setSucursalId(s.id_sucursal);
+                        setSucursalId(s.id);
                         setSucursalNombre(s.nombre);
                         setDropdownOpen(false);
                       }}
