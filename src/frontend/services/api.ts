@@ -1,4 +1,4 @@
-const API_URL = "http://10.232.41.10:3000"; // ← TU IP PERSONAL
+const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
 
 export const api = async (endpoint: string, options?: RequestInit) => {
   const res = await fetch(`${API_URL}${endpoint}`, {
