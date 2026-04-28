@@ -5,7 +5,6 @@ import express from "express";
 
 // 🔹 Importar rutas
 import sucursalRoutes from "./modules/sucursal/interfaces/routes";
-//mport menuRoutes from "./modules/menu/interfaces/routes";
 import menuRoutes from "./modules/menu/interfaces/routes";
 
 const app = express();
@@ -21,6 +20,7 @@ app.get("/", (req, res) => {
 
 // 🔹 Usar rutas de módulos
 app.use("/api/sucursales", sucursalRoutes);
+app.use("/api/menu", menuRoutes);
 
 // 🔹 Puerto
 const PORT = 3000;
@@ -29,5 +29,3 @@ const PORT = 3000;
 app.listen(PORT, "0.0.0.0",() => {
   console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });
-
-app.use("/api/menu", menuRoutes);
