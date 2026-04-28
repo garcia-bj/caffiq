@@ -22,6 +22,7 @@ export interface IAuthRepository {
   existeNombreOTelefono(nom_usuario: string, num_telefono: string): Promise<boolean>;
   marcarTelefonoVerificado(id: string): Promise<void>;
   buscarCafeteriaPorAdmin(admin_id: string): Promise<CafeteriaEntity | null>;
+  actualizarPerfil(id: string, datos: { nom_completo?: string; num_telefono?: string }): Promise<UsuarioEntity>;
   upsertGoogle(datos: {
     nom_usuario: string;
     nom_completo: string;

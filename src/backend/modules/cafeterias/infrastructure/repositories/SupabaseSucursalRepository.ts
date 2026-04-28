@@ -2,7 +2,7 @@ import { supabaseAdmin } from "@config/supabase";
 import type { ISucursalRepository } from "../../domain/repositories/ISucursalRepository";
 import type { SucursalEntity, CrearSucursalData, ModificarSucursalData } from "../../domain/entities/Sucursal";
 
-const TABLA = "sucursales";
+const TABLA = "Sucursal";
 
 export class SupabaseSucursalRepository implements ISucursalRepository {
 

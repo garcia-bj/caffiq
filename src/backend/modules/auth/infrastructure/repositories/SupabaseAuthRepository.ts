@@ -95,6 +95,25 @@ export class SupabaseAuthRepository implements IAuthRepository {
     return data as CafeteriaEntity | null;
   }
 
+  async actualizarPerfil(
+    id: string,
+    datos: { nom_completo?: string; num_telefono?: string }
+  ): Promise<UsuarioEntity> {
+    const updates: Record<string, string> = {};
+    if (datos.nom_completo) updates.nom_completo = datos.nom_completo;
+    if (datos.num_telefono) updates.num_telefono = datos.num_telefono;
+
+    const { data, error } = await supabaseAdmin
+      .from(T_USUARIOS)
+      .update(updates)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return data as UsuarioEntity;
+  }
+
   async upsertGoogle(datos: {
     nom_usuario: string;
     nom_completo: string;

@@ -15,6 +15,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as ImagePicker from "expo-image-picker";
 import { Caffiq } from "@/frontend/constants/theme";
 import { authService } from "@/frontend/services/auth.service";
 
@@ -112,18 +113,77 @@ function SectionLabel({ icon, label }: { icon: keyof typeof Ionicons.glyphMap; l
   );
 }
 
+// ─── Selector de logo ─────────────────────────────────────────────────────────
+function LogoPicker({
+  uri,
+  onPick,
+}: {
+  uri: string | null;
+  onPick: (uri: string) => void;
+}) {
+  const handlePick = async () => {
+    // Pedir permisos
+    if (Platform.OS !== "web") {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permiso requerido", "Necesitamos acceso a tu galería para subir el logo.");
+        return;
+      }
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      onPick(result.assets[0].uri);
+    }
+  };
+
+  return (
+    <TouchableOpacity style={styles.logoPicker} onPress={handlePick} activeOpacity={0.8}>
+      {uri ? (
+        <View style={styles.logoPreviewWrap}>
+          <Image source={{ uri }} style={styles.logoPreviewImg} />
+          <View style={styles.logoEditOverlay}>
+            <Ionicons name="camera-outline" size={18} color="#fff" />
+            <Text style={styles.logoEditText}>Cambiar</Text>
+          </View>
+        </View>
+      ) : (
+        <View style={styles.logoEmpty}>
+          <View style={styles.logoEmptyIcon}>
+            <Ionicons name="image-outline" size={28} color={Caffiq.pineTeal} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.logoEmptyTitle}>Subir logo de cafetería</Text>
+            <Text style={styles.logoEmptySubtitle}>PNG, JPG · Recomendado 1:1</Text>
+          </View>
+          <View style={styles.logoPickerBtn}>
+            <Text style={styles.logoPickerBtnText}>Elegir</Text>
+          </View>
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+}
+
 // ─── Screen ──────────────────────────────────────────────────────────────────
 export default function RegisterScreen() {
   const [rol, setRol] = useState<Rol>("cliente");
 
-  const [nomCompleto, setNomCompleto]         = useState("");
-  const [nomUsuario,  setNomUsuario]           = useState("");
-  const [telefono,    setTelefono]             = useState("");
-  const [password,    setPassword]             = useState("");
-  const [confirmar,   setConfirmar]            = useState("");
+  const [nomCompleto,     setNomCompleto]     = useState("");
+  const [nomUsuario,      setNomUsuario]       = useState("");
+  const [telefono,        setTelefono]         = useState("");
+  const [password,        setPassword]         = useState("");
+  const [confirmar,       setConfirmar]        = useState("");
   const [nomCafeteria,    setNomCafeteria]     = useState("");
   const [descripcion,     setDescripcion]      = useState("");
   const [ciudadCafeteria, setCiudadCafeteria]  = useState("");
+  const [logoUri,         setLogoUri]          = useState<string | null>(null);
 
   const [errors,  setErrors]  = useState<Errors>({});
   const [loading, setLoading] = useState(false);
@@ -157,7 +217,6 @@ export default function RegisterScreen() {
       case "ciudadCafeteria":
         if (!val.trim())    return "La ciudad es requerida";
         break;
-
     }
     return "";
   };
@@ -200,6 +259,7 @@ export default function RegisterScreen() {
             nom_cafeteria: nomCafeteria.trim(),
             ciudad:        ciudadCafeteria.trim(),
             descripcion:   descripcion.trim() || undefined,
+            logo_uri:      logoUri ?? undefined,
           },
         }),
       };
@@ -297,6 +357,15 @@ export default function RegisterScreen() {
                 <>
                   <SectionLabel icon="storefront-outline" label="Datos de tu cafetería" />
 
+                  {/* Logo de cafetería */}
+                  <View style={styles.logoPickerSection}>
+                    <Text style={styles.logoPickerLabel}>Logo de la cafetería</Text>
+                    <LogoPicker uri={logoUri} onPick={setLogoUri} />
+                    <Text style={styles.logoPickerHint}>
+                      Sube el logo para que tus clientes identifiquen tu cafetería fácilmente
+                    </Text>
+                  </View>
+
                   <Field
                     icon="cafe-outline" placeholder="Nombre de la cafetería *"
                     value={nomCafeteria} onChange={setNomCafeteria}
@@ -362,7 +431,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Caffiq.white, paddingHorizontal: 28, paddingTop: 28, paddingBottom: 24, overflow: "hidden" },
   patternCircle: { position: "absolute", backgroundColor: Caffiq.pineTeal },
 
-  // Logo
+  // Logo app
   logoWrapper: { alignItems: "center", marginBottom: 24 },
   logoCircle:  { width: 80, height: 80, borderRadius: 40, borderWidth: 3, borderColor: Caffiq.pineTeal, backgroundColor: Caffiq.white, alignItems: "center", justifyContent: "center", overflow: "hidden", shadowColor: Caffiq.pineTeal, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 5 },
   logoImage:   { width: 60, height: 60, borderRadius: 30 },
@@ -394,6 +463,27 @@ const styles = StyleSheet.create({
   // Error tag
   errorTag:     { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 4 },
   errorTagText: { fontSize: 12, color: Caffiq.error, fontWeight: "500" },
+
+  // ── Logo picker ────────────────────────────────────────────────────────
+  logoPickerSection: { gap: 6 },
+  logoPickerLabel:   { fontSize: 12, fontWeight: "700", color: Caffiq.pineTeal, textTransform: "uppercase", letterSpacing: 0.8 },
+  logoPickerHint:    { fontSize: 11, color: Caffiq.placeholder, lineHeight: 16 },
+
+  logoPicker: { borderRadius: 14, borderWidth: 1.5, borderColor: Caffiq.inputBorder, borderStyle: "dashed", overflow: "hidden", backgroundColor: Caffiq.inputBg },
+
+  // Empty state
+  logoEmpty:       { flexDirection: "row", alignItems: "center", padding: 16, gap: 12 },
+  logoEmptyIcon:   { width: 52, height: 52, borderRadius: 12, backgroundColor: `${Caffiq.pineTeal}18`, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: `${Caffiq.pineTeal}30` },
+  logoEmptyTitle:  { fontSize: 14, fontWeight: "700", color: Caffiq.textDark, marginBottom: 2 },
+  logoEmptySubtitle:{ fontSize: 12, color: Caffiq.placeholder },
+  logoPickerBtn:   { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, backgroundColor: Caffiq.pineTeal },
+  logoPickerBtnText:{ fontSize: 13, fontWeight: "700", color: Caffiq.white },
+
+  // Preview state
+  logoPreviewWrap:   { position: "relative", height: 140 },
+  logoPreviewImg:    { width: "100%", height: "100%", resizeMode: "cover" },
+  logoEditOverlay:   { position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: "rgba(0,0,0,0.5)", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 10 },
+  logoEditText:      { color: "#fff", fontSize: 13, fontWeight: "700" },
 
   // Botón
   registerBtn:     { backgroundColor: Caffiq.pineTeal, borderRadius: 12, paddingVertical: 15, alignItems: "center", marginTop: 4, shadowColor: Caffiq.pineTeal, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 8, elevation: 5 },

@@ -12,6 +12,7 @@ import { LoginUser } from "../application/use-cases/LoginUser";
 import { VerifyPhone } from "../application/use-cases/VerifyPhone";
 import { ResendOtp } from "../application/use-cases/ResendOtp";
 import { GoogleLogin } from "../application/use-cases/GoogleLogin";
+import { UpdateMe } from "../application/use-cases/UpdateMe";
 
 // ── Composition root (no IoC container needed at this scale) ─────────────────
 const authRepo         = new SupabaseAuthRepository();
@@ -22,6 +23,7 @@ const loginUser    = new LoginUser(authRepo);
 const verifyPhone  = new VerifyPhone(authRepo, verificacionRepo);
 const resendOtp    = new ResendOtp(authRepo, verificacionRepo, enviarWhatsApp);
 const googleLogin  = new GoogleLogin(authRepo);
+const updateMe     = new UpdateMe(authRepo);
 
 export const authController = {
 
@@ -109,6 +111,21 @@ export const authController = {
   async me(req: Request, res: Response, next: NextFunction) {
     try {
       res.status(200).json({ usuario: req.user });
+    } catch (err) { next(err); }
+  },
+
+  // PATCH /api/auth/me
+  async updateMe(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { nom_completo, num_telefono } = req.body;
+      if (!nom_completo && !num_telefono) {
+        throw new AppError("Debes enviar al menos un campo para actualizar", 400);
+      }
+      const usuarioId = req.user!.id;
+      const usuario = await updateMe.execute(usuarioId, { nom_completo, num_telefono });
+      // Excluir password del resultado
+      const { password: _, ...usuarioPublico } = usuario as any;
+      res.status(200).json({ usuario: usuarioPublico });
     } catch (err) { next(err); }
   },
 };

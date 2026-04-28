@@ -10,6 +10,7 @@ router.post("/resend-otp",   authController.resendOtp);
 router.post("/login",        authController.login);
 router.get("/google",        authController.googleRedirect);
 router.get("/google/callback", authController.googleCallback);
-router.get("/me", authMiddleware, authController.me);
+router.get("/me",  authMiddleware, authController.me);
+router.patch("/me", authMiddleware, authController.updateMe);
 
 export default router;

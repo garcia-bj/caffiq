@@ -13,6 +13,7 @@ interface AuthContextValue extends AuthState {
   login: (nom_usuario: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   setSession: (token: string, usuario: UsuarioPublico) => Promise<void>;
+  setUsuario: (usuario: UsuarioPublico) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -59,8 +60,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setState({ usuario: null, token: null, isLoading: false, isAuthenticated: false });
   };
 
+  const setUsuario = (usuario: UsuarioPublico) => {
+    setState((s) => ({ ...s, usuario }));
+    // Persistir en storage para que al reabrir la app se vea actualizado
+    storage.setUser(usuario).catch(() => {});
+  };
+
   return (
-    <AuthContext.Provider value={{ ...state, login, logout, setSession }}>
+    <AuthContext.Provider value={{ ...state, login, logout, setSession, setUsuario }}>
       {children}
     </AuthContext.Provider>
   );

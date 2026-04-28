@@ -38,6 +38,7 @@ interface CafeteriaDTO {
   nom_cafeteria: string;
   ciudad:        string;
   descripcion?:  string;
+  logo_uri?:     string;
 }
 
 export const authService = {
@@ -74,6 +75,13 @@ export const authService = {
 
   me: (token: string) =>
     api<{ usuario: UsuarioPublico }>("/auth/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+
+  updateMe: (token: string, datos: { nom_completo?: string; num_telefono?: string }) =>
+    api<{ usuario: UsuarioPublico }>("/auth/me", {
+      method: "PATCH",
+      body: JSON.stringify(datos),
       headers: { Authorization: `Bearer ${token}` },
     }),
 };

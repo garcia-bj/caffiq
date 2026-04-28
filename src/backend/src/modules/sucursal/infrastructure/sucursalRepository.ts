@@ -6,14 +6,14 @@ export const obtenerTodasLasSucursales = async (): Promise<Sucursal[]> => {
   const { data, error } = await supabase
     .from("Sucursal")
     .select("*")
-    .eq("estado_sucursal", true);
+    .eq("activa", true);
 
   if (error) {
     throw new Error(`Error en Supabase: ${error.message}`);
   }
 
-  return data as Sucursal[]; 
-};                            
+  return data as Sucursal[];
+};
 
 export const addSucursalDB = async (sucursal: Sucursal) => {
   const { data, error } = await supabase.from("Sucursal").insert([sucursal]);
@@ -24,15 +24,15 @@ export const getSucursalById = async (id: string) => {
   return await supabase
     .from("Sucursal")
     .select("*")
-    .eq("id_sucursal", id)
+    .eq("id", id)
     .single();
 };
 
 export const suspenderSucursalDB = async (id: string) => {
   const { data, error } = await supabase
     .from("Sucursal")
-    .update({ estado_sucursal: false })
-    .eq("id_sucursal", id)
+    .update({ activa: false })
+    .eq("id", id)
     .select();
   return { data, error };
 };
@@ -40,13 +40,13 @@ export const suspenderSucursalDB = async (id: string) => {
 export const modificarSucursalDB = async (id: string, datos: {
   nombre: string;
   direccion: string;
-  imagen: string;
-  estado_sucursal: boolean;
+  imagen_url: string;
+  activa: boolean;
 }) => {
   const { data, error } = await supabase
     .from("Sucursal")
     .update(datos)
-    .eq("id_sucursal", id)
+    .eq("id", id)
     .select();
   return { data, error };
 };
@@ -58,19 +58,19 @@ export const verificarDuplicadoDB = async (
 ) => {
   const { data } = await supabase
     .from("Sucursal")
-    .select("id_sucursal")
+    .select("id")
     .eq("nombre", nombre)
     .eq("direccion", direccion)
-    .neq("id_sucursal", idExcluir)
+    .neq("id", idExcluir)
     .single();
 
-  return !!data; 
+  return !!data;
 };
-// Trae TODAS sin filtrar por estado
+
 export const obtenerTodasSucursalesSinFiltro = async (): Promise<Sucursal[]> => {
   const { data, error } = await supabase
     .from("Sucursal")
-    .select("*"); // ← sin .eq("estado_sucursal", true)
+    .select("*");
 
   if (error) {
     throw new Error(`Error en Supabase: ${error.message}`);
