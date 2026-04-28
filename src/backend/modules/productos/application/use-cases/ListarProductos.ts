@@ -4,7 +4,7 @@ import type { ProductoEntity } from "../../domain/entities/Producto";
 export class ListarProductos {
   constructor(private readonly repo: IProductoRepository) {}
 
-  async execute(cafeteria_id: string, categoria?: string): Promise<ProductoEntity[]> {
-    return this.repo.listarPorCafeteria(cafeteria_id, categoria);
+  async execute(cafeteria_id: string): Promise<ProductoEntity[]> {
+    return this.repo.listarPorCafeteria(cafeteria_id);
   }
 }

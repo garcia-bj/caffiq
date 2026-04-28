@@ -2,32 +2,42 @@ import { supabaseAdmin } from "@config/supabase";
 import type { IProductoRepository } from "../../domain/repositories/IProductoRepository";
 import type { ProductoEntity, CrearProductoData } from "../../domain/entities/Producto";
 
-const TABLA = "productos";
+const PRODUCTO        = "Producto";
+const SUCURSAL_PROD   = "Sucursal_producto";
+const SUCURSAL        = "Sucursal";
 
 export class SupabaseProductoRepository implements IProductoRepository {
 
-  async listarPorCafeteria(cafeteria_id: string, categoria?: string): Promise<ProductoEntity[]> {
-    let query = supabaseAdmin
-      .from(TABLA)
-      .select("*")
+  async listarPorCafeteria(cafeteria_id: string): Promise<ProductoEntity[]> {
+    // Obtener IDs de sucursales activas de la cafetería
+    const { data: sucursales, error: errSuc } = await supabaseAdmin
+      .from(SUCURSAL)
+      .select("id")
       .eq("cafeteria_id", cafeteria_id)
-      .eq("disponible", true)
-      .order("created_at", { ascending: true });
+      .eq("activa", true);
 
-    if (categoria && categoria !== "Todos") {
-      query = query.eq("categoria", categoria);
-    }
+    if (errSuc) throw new Error(errSuc.message);
+    const ids = (sucursales ?? []).map((s: any) => s.id);
+    if (ids.length === 0) return [];
 
-    const { data, error } = await query;
+    // Traer productos activos de esas sucursales via tabla intermedia
+    const { data, error } = await supabaseAdmin
+      .from(SUCURSAL_PROD)
+      .select(`Producto ( id_producto, nom_producto, descripcion, precio, stock, estado, imagen_producto )`)
+      .in("id_sucursal", ids);
+
     if (error) throw new Error(error.message);
-    return (data ?? []) as ProductoEntity[];
+
+    return (data ?? [])
+      .map((sp: any) => sp.Producto)
+      .filter((p: any) => p?.estado === true) as ProductoEntity[];
   }
 
   async buscarPorId(id: string): Promise<ProductoEntity | null> {
     const { data, error } = await supabaseAdmin
-      .from(TABLA)
+      .from(PRODUCTO)
       .select("*")
-      .eq("id", id)
+      .eq("id_producto", id)
       .maybeSingle();
 
     if (error) throw new Error(error.message);
@@ -35,30 +45,39 @@ export class SupabaseProductoRepository implements IProductoRepository {
   }
 
   async crear(datos: CrearProductoData): Promise<ProductoEntity> {
-    const { data, error } = await supabaseAdmin
-      .from(TABLA)
+    const stockNum = datos.stock ?? 0;
+
+    // 1. Insertar producto
+    const { data: productoCreado, error: errProd } = await supabaseAdmin
+      .from(PRODUCTO)
       .insert([{
-        cafeteria_id: datos.cafeteria_id,
-        nombre:       datos.nombre,
-        descripcion:  datos.descripcion  ?? null,
-        precio:       datos.precio,
-        categoria:    datos.categoria,
-        imagen_url:   datos.imagen_url   ?? null,
-        badge:        datos.badge        ?? null,
-        disponible:   true,
+        nom_producto:    datos.nom_producto,
+        descripcion:     datos.descripcion    ?? null,
+        precio:          datos.precio,
+        stock:           datos.stock          ?? null,
+        imagen_producto: datos.imagen_producto ?? null,
+        estado:          stockNum > 0,
       }])
       .select()
       .single();
 
-    if (error) throw new Error(error.message);
-    return data as ProductoEntity;
+    if (errProd || !productoCreado) throw new Error(errProd?.message ?? "Error al crear producto");
+
+    // 2. Asociar a la sucursal en tabla intermedia
+    const { error: errAssoc } = await supabaseAdmin
+      .from(SUCURSAL_PROD)
+      .insert([{ id_sucursal: datos.id_sucursal, id_producto: productoCreado.id_producto }]);
+
+    if (errAssoc) throw new Error(errAssoc.message);
+
+    return productoCreado as ProductoEntity;
   }
 
-  async toggleDisponible(id: string, disponible: boolean): Promise<void> {
+  async suspender(id: string): Promise<void> {
     const { error } = await supabaseAdmin
-      .from(TABLA)
-      .update({ disponible })
-      .eq("id", id);
+      .from(PRODUCTO)
+      .update({ estado: false })
+      .eq("id_producto", id);
 
     if (error) throw new Error(error.message);
   }

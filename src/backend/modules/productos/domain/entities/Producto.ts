@@ -1,22 +1,18 @@
 export interface ProductoEntity {
-  id: string;
-  cafeteria_id: string;
-  nombre: string;
+  id_producto: string;
+  nom_producto: string;
   descripcion: string | null;
   precio: number;
-  categoria: string;
-  imagen_url: string | null;
-  badge: string | null;
-  disponible: boolean;
-  created_at: string;
+  stock: number | null;
+  estado: boolean | null;
+  imagen_producto: string | null;
 }
 
 export interface CrearProductoData {
-  cafeteria_id: string;
-  nombre: string;
+  id_sucursal: string;
+  nom_producto: string;
   descripcion?: string;
   precio: number;
-  categoria: string;
-  imagen_url?: string;
-  badge?: string;
+  stock?: number;
+  imagen_producto?: string;
 }

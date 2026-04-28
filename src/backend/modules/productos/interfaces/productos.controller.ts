@@ -4,18 +4,17 @@ import { SupabaseProductoRepository } from "../infrastructure/repositories/Supab
 import { ListarProductos } from "../application/use-cases/ListarProductos";
 import { CrearProducto } from "../application/use-cases/CrearProducto";
 
-const repo          = new SupabaseProductoRepository();
-const listar        = new ListarProductos(repo);
-const crear         = new CrearProducto(repo);
+const repo   = new SupabaseProductoRepository();
+const listar = new ListarProductos(repo);
+const crear  = new CrearProducto(repo);
 
 export const productosController = {
 
-  // GET /api/cafeterias/:cafeteria_id/productos?categoria=Espresso
+  // GET /api/cafeterias/:cafeteria_id/productos
   async listar(req: Request, res: Response, next: NextFunction) {
     try {
       const { cafeteria_id } = req.params;
-      const { categoria }    = req.query as { categoria?: string };
-      const productos = await listar.execute(cafeteria_id, categoria);
+      const productos = await listar.execute(cafeteria_id);
       res.status(200).json({ productos });
     } catch (err) { next(err); }
   },
@@ -24,13 +23,21 @@ export const productosController = {
   async crear(req: Request, res: Response, next: NextFunction) {
     try {
       const { cafeteria_id } = req.params;
-      const { nombre, descripcion, precio, categoria, imagen_url, badge } = req.body;
-      if (!nombre || precio === undefined || !categoria) {
-        throw new AppError("nombre, precio y categoria son requeridos", 400);
+      const { id_sucursal, nom_producto, descripcion, precio, stock, imagen_producto } = req.body;
+
+      if (!id_sucursal || !nom_producto || precio === undefined) {
+        throw new AppError("id_sucursal, nom_producto y precio son requeridos", 400);
       }
+
       const producto = await crear.execute({
-        cafeteria_id, nombre, descripcion, precio: Number(precio), categoria, imagen_url, badge,
+        id_sucursal,
+        nom_producto,
+        descripcion,
+        precio: Number(precio),
+        stock:  stock ? Number(stock) : undefined,
+        imagen_producto,
       });
+
       res.status(201).json({ producto });
     } catch (err) { next(err); }
   },
