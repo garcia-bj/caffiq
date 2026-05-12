@@ -11,6 +11,7 @@ export interface SucursalEntity {
   longitud: number | null;
   activa: boolean;
   created_at: string;
+  nom_cafeteria?: string; // incluido al hacer join con cafeterias
 }
 
 export interface CrearSucursalData {

@@ -71,10 +71,13 @@ function SucursalItem({
     router.push({
       pathname: "/sucursal/[id]" as never,
       params: {
-        id:                item.id,
-        cafeteria_id:      cafeteriaId,
-        cafeteria_nombre:  nomCafeteria,
-        sucursal_nombre:   item.nombre,
+        id:                 item.id,
+        cafeteria_id:       cafeteriaId,
+        cafeteria_nombre:   nomCafeteria,
+        sucursal_nombre:    item.nombre,
+        sucursal_direccion: item.direccion,
+        latitud:            item.latitud  != null ? String(item.latitud)  : undefined,
+        longitud:           item.longitud != null ? String(item.longitud) : undefined,
       },
     });
   };

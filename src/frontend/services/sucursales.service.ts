@@ -15,6 +15,10 @@ export interface SucursalPublica {
   created_at: string;
 }
 
+export interface SucursalConCafe extends SucursalPublica {
+  nom_cafeteria: string | null;
+}
+
 export interface SucursalInput {
   nombre: string;
   direccion: string;
@@ -39,6 +43,14 @@ const authFetch = async <T>(path: string, token: string, options: RequestInit = 
 };
 
 export const sucursalesService = {
+  // Endpoint público — todas las sucursales activas con nombre de cafetería (para el mapa de búsqueda)
+  listarTodas: async (): Promise<SucursalConCafe[]> => {
+    const res = await fetch(`${BASE_URL}/sucursales`);
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.mensaje ?? "Error al cargar sucursales");
+    return json as SucursalConCafe[];
+  },
+
   listar: (token: string, cafeteria_id: string) =>
     authFetch<{ sucursales: SucursalPublica[] }>(`/cafeterias/${cafeteria_id}/sucursales`, token),
 

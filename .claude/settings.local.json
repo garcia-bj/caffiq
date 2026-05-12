@@ -4,7 +4,8 @@
       "Bash(npm install:*)",
       "Bash(npx expo *)",
       "Bash(npx tsc *)",
-      "Bash(git -C b:/Caffiq stash push -m \"trabajo-ddd-local\")"
+      "Bash(git -C b:/Caffiq stash push -m \"trabajo-ddd-local\")",
+      "Bash(node -e \"const pkg = require\\('./package.json'\\); console.log\\('@rnmapbox/maps:', pkg.dependencies['@rnmapbox/maps']\\)\")"
     ]
   }
 }
