@@ -1,15 +1,13 @@
 import { NavbarLateral } from "@/frontend/components/navbar-lateral";
-import { listarTodosProductosAPI  } from "@/frontend/services/menuService";
-import { getSucursalesAPI } from "@/frontend/services/sucursalService";
-import { Producto } from "@/frontend/types/producto";
-import { Sucursal } from "@/frontend/types/sucursal";
+import { useAuth } from "@/frontend/context/AuthContext";
+import { sucursalesService, type SucursalPublica } from "@/frontend/services/sucursales.service";
+import { productosService, type ProductoPublico } from "@/frontend/services/productos.service";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Image,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -17,30 +15,31 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ModificarProductoMenu() {
   const router = useRouter();
+  const { token, usuario } = useAuth();
   const [navbarVisible, setNavbarVisible] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [sucursales, setSucursales] = useState<Sucursal[]>([]);
+  const [sucursales, setSucursales] = useState<SucursalPublica[]>([]);
   const [cargandoLista, setCargandoLista] = useState(true);
   const [cargandoProductos, setCargandoProductos] = useState(false);
   const [sucursalId, setSucursalId] = useState<string | null>(null);
   const [sucursalNombre, setSucursalNombre] = useState<string>("");
-  const [productos, setProductos] = useState<Producto[]>([]);
+  const [productos, setProductos] = useState<ProductoPublico[]>([]);
 
   useEffect(() => {
     cargarSucursales();
-  }, []);
+  }, [token, usuario?.cafeteria_id]);
 
-
-  
   const cargarSucursales = async () => {
+    if (!token || !usuario?.cafeteria_id) return;
     setCargandoLista(true);
     try {
-      const datos = await getSucursalesAPI();
-      setSucursales(datos || []);
-    } catch (error) {
+      const { sucursales: datos } = await sucursalesService.listar(token, usuario.cafeteria_id);
+      setSucursales(datos ?? []);
+    } catch {
       Alert.alert("Error", "No se pudieron cargar las sucursales");
     } finally {
       setCargandoLista(false);
@@ -48,32 +47,32 @@ export default function ModificarProductoMenu() {
   };
 
   const seleccionarSucursal = async (id: string, nombre: string) => {
+    if (!token || !usuario?.cafeteria_id) return;
     setSucursalId(id);
     setSucursalNombre(nombre);
     setDropdownOpen(false);
     setCargandoProductos(true);
     try {
-      const datos = await listarTodosProductosAPI(id);
-      setProductos(datos || []);
-    } catch (error) {
+      const { productos: datos } = await productosService.listarPorSucursal(token, usuario.cafeteria_id, id);
+      setProductos(datos ?? []);
+    } catch {
       Alert.alert("Error", "No se pudieron cargar los productos");
     } finally {
       setCargandoProductos(false);
     }
   };
 
-  const irAEditar = (producto: Producto) => {
+  const irAEditar = (producto: ProductoPublico) => {
     router.push({
       pathname: "/menu/editar-producto",
-      params: { productoId: producto.id_producto },
+      params: { productoId: producto.id, cafeteria_id: usuario?.cafeteria_id },
     } as any);
   };
 
-  const getBadge = (p: Producto) => {
-    if (!p.estado) return { label: "Suspendido", color: "#888888" };
-    if ((p.stock ?? 0) === 0)
-      return { label: "No disponible", color: "#541A1A" };
-    return null; // ← sin etiqueta si está disponible
+  const getBadge = (p: ProductoPublico) => {
+    if (!p.disponible) return { label: "Suspendido", color: "#888888" };
+    if ((p.stock ?? 0) === 0) return { label: "No disponible", color: "#541A1A" };
+    return null;
   };
 
   return (
@@ -81,10 +80,7 @@ export default function ModificarProductoMenu() {
       <StatusBar barStyle="light-content" backgroundColor="#0D5A52" />
 
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.menuBtn}
-          onPress={() => setNavbarVisible(true)}
-        >
+        <TouchableOpacity style={styles.menuBtn} onPress={() => setNavbarVisible(true)}>
           <View style={styles.menuLine} />
           <View style={styles.menuLine} />
           <View style={styles.menuLine} />
@@ -95,10 +91,7 @@ export default function ModificarProductoMenu() {
         </View>
       </View>
 
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-      >
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent}>
         <Text style={styles.pageTitle}>Modificar Producto</Text>
 
         {/* Dropdown sucursal */}
@@ -114,9 +107,7 @@ export default function ModificarProductoMenu() {
                 <Text style={styles.dropdownText}>
                   {sucursalNombre || "Seleccione una sucursal"}
                 </Text>
-                <Text style={styles.dropdownChevron}>
-                  {dropdownOpen ? "▲" : "▼"}
-                </Text>
+                <Text style={styles.dropdownChevron}>{dropdownOpen ? "▲" : "▼"}</Text>
               </TouchableOpacity>
 
               {dropdownOpen && (
@@ -125,9 +116,7 @@ export default function ModificarProductoMenu() {
                     <TouchableOpacity
                       key={s.id}
                       style={styles.dropdownItem}
-                      onPress={() =>
-                        seleccionarSucursal(s.id, s.nombre)
-                      }
+                      onPress={() => seleccionarSucursal(s.id, s.nombre)}
                     >
                       <Text style={styles.dropdownItemText}>{s.nombre}</Text>
                     </TouchableOpacity>
@@ -143,15 +132,9 @@ export default function ModificarProductoMenu() {
           <>
             <Text style={styles.sectionTitle}>Menú de ({sucursalNombre})</Text>
             {cargandoProductos ? (
-              <ActivityIndicator
-                size="large"
-                color="#0D5A52"
-                style={{ marginTop: 20 }}
-              />
+              <ActivityIndicator size="large" color="#0D5A52" style={{ marginTop: 20 }} />
             ) : productos.length === 0 ? (
-              <Text
-                style={{ color: "#999", textAlign: "center", marginTop: 20 }}
-              >
+              <Text style={{ color: "#999", textAlign: "center", marginTop: 20 }}>
                 No hay productos en esta sucursal
               </Text>
             ) : (
@@ -160,38 +143,21 @@ export default function ModificarProductoMenu() {
                   const badge = getBadge(p);
                   return (
                     <TouchableOpacity
-                      key={p.id_producto}
+                      key={p.id}
                       style={styles.card}
                       onPress={() => irAEditar(p)}
                       activeOpacity={0.85}
                     >
-                      <Image
-                        source={{ uri: p.imagen_producto || undefined }}
-                        style={styles.cardImage}
-                      />
-                      {/* Solo muestra badge si no es null */}
+                      <Image source={{ uri: p.imagen_url ?? undefined }} style={styles.cardImage} />
                       {badge && (
-                        <View
-                          style={[
-                            styles.estadoBadge,
-                            { backgroundColor: badge.color },
-                          ]}
-                        >
-                          <Text style={styles.estadoBadgeText}>
-                            {badge.label}
-                          </Text>
+                        <View style={[styles.estadoBadge, { backgroundColor: badge.color }]}>
+                          <Text style={styles.estadoBadgeText}>{badge.label}</Text>
                         </View>
                       )}
                       <View style={styles.cardInfo}>
-                        <Text style={styles.cardNombre} numberOfLines={2}>
-                          {p.nom_producto}
-                        </Text>
-                        <Text style={styles.cardPrecio}>
-                          $ {p.precio?.toFixed(2)}
-                        </Text>
-                        <Text style={styles.cardStock}>
-                          Stock: {p.stock ?? 0}
-                        </Text>
+                        <Text style={styles.cardNombre} numberOfLines={2}>{p.nombre}</Text>
+                        <Text style={styles.cardPrecio}>$ {p.precio?.toFixed(2)}</Text>
+                        <Text style={styles.cardStock}>Stock: {p.stock ?? 0}</Text>
                       </View>
                     </TouchableOpacity>
                   );
@@ -202,10 +168,7 @@ export default function ModificarProductoMenu() {
         )}
       </ScrollView>
 
-      <NavbarLateral
-        visible={navbarVisible}
-        onClose={() => setNavbarVisible(false)}
-      />
+      <NavbarLateral visible={navbarVisible} onClose={() => setNavbarVisible(false)} />
     </SafeAreaView>
   );
 }
@@ -213,106 +176,32 @@ export default function ModificarProductoMenu() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#f5f0eb" },
   header: {
-    backgroundColor: "#0D5A52",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    paddingTop: 50,
+    backgroundColor: "#0D5A52", flexDirection: "row", alignItems: "center",
+    justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 14, paddingTop: 50,
   },
   menuBtn: { gap: 5, padding: 4 },
-  menuLine: {
-    width: 24,
-    height: 2.5,
-    backgroundColor: "#fff",
-    borderRadius: 2,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#fff",
-    letterSpacing: 3,
-  },
-  logoContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  menuLine: { width: 24, height: 2.5, backgroundColor: "#fff", borderRadius: 2 },
+  headerTitle: { fontSize: 20, fontWeight: "800", color: "#fff", letterSpacing: 3 },
+  logoContainer: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" },
   logoEmoji: { fontSize: 20 },
   scroll: { flex: 1 },
   scrollContent: { padding: 20, paddingBottom: 40 },
-  pageTitle: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: "#2C1819",
-    marginBottom: 16,
-    fontStyle: "italic",
-    textAlign: "center",
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: "#0D5A52",
-    marginBottom: 12,
-  },
+  pageTitle: { fontSize: 22, fontWeight: "700", color: "#2C1819", marginBottom: 16, fontStyle: "italic", textAlign: "center" },
+  sectionTitle: { fontSize: 17, fontWeight: "700", color: "#0D5A52", marginBottom: 12 },
   inputGroup: { marginBottom: 16 },
-  dropdown: {
-    backgroundColor: "#6FA58B",
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
+  dropdown: { backgroundColor: "#6FA58B", borderRadius: 8, paddingHorizontal: 14, paddingVertical: 13, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   dropdownText: { color: "#fff", fontSize: 14 },
   dropdownChevron: { color: "#fff", fontSize: 12 },
-  dropdownList: {
-    backgroundColor: "#fff",
-    borderRadius: 8,
-    marginTop: 4,
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-  },
-  dropdownItem: {
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f0f0f0",
-  },
+  dropdownList: { backgroundColor: "#fff", borderRadius: 8, marginTop: 4, elevation: 4, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4 },
+  dropdownItem: { paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#f0f0f0" },
   dropdownItemText: { fontSize: 14, color: "#2C1819" },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  card: {
-    width: "47%",
-    borderRadius: 12,
-    overflow: "hidden",
-    backgroundColor: "#fff",
-    elevation: 3,
-  },
+  card: { width: "47%", borderRadius: 12, overflow: "hidden", backgroundColor: "#fff", elevation: 3 },
   cardImage: { width: "100%", height: 110 },
-  estadoBadge: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
+  estadoBadge: { position: "absolute", top: 8, right: 8, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   estadoBadgeText: { color: "#fff", fontSize: 10, fontWeight: "700" },
   cardInfo: { padding: 8 },
-  cardNombre: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#2C1819",
-    marginBottom: 2,
-  },
+  cardNombre: { fontSize: 12, fontWeight: "600", color: "#2C1819", marginBottom: 2 },
   cardPrecio: { fontSize: 13, fontWeight: "700", color: "#541A1A" },
   cardStock: { fontSize: 11, color: "#6FA58B", marginTop: 2 },
 });

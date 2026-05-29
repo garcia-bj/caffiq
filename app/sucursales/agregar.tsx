@@ -1,11 +1,11 @@
 import { NavbarLateral } from "@/frontend/components/navbar-lateral";
+import { LocationPickerButton } from "@/frontend/components/LocationPickerButton";
 import * as ImagePicker from "expo-image-picker";
 import React, { useState } from "react";
 import {
   Alert,
   Image,
   Modal,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/frontend/context/AuthContext";
 import { sucursalesService } from "@/frontend/services/sucursales.service";
 import { subirImagenCloudinary } from "@/frontend/services/cloudinary.service";
@@ -24,6 +25,8 @@ export default function AgregarSucursal() {
   const [nombre, setNombre] = useState("");
   const [direccion, setDireccion] = useState("");
   const [ciudad, setCiudad] = useState("");
+  const [latitud, setLatitud] = useState<number | null>(null);
+  const [longitud, setLongitud] = useState<number | null>(null);
   const [imagen, setImagen] = useState<string | null>(null);
   const [modalConfirm, setModalConfirm] = useState(false);
   const [guardando, setGuardando] = useState(false);
@@ -79,12 +82,16 @@ export default function AgregarSucursal() {
         direccion,
         ciudad,
         imagen_url,
+        latitud,
+        longitud,
       });
 
       Alert.alert("Éxito", "Sucursal registrada correctamente.");
       setNombre("");
       setDireccion("");
       setCiudad("");
+      setLatitud(null);
+      setLongitud(null);
       setImagen(null);
     } catch (err: any) {
       Alert.alert("Error", err.message ?? "No se pudo guardar la sucursal");
@@ -146,6 +153,16 @@ export default function AgregarSucursal() {
         </View>
 
         <View style={styles.inputGroup}>
+          <Text style={styles.label}>Ubicación en el mapa <Text style={styles.labelOpcional}>(opcional)</Text></Text>
+          <Text style={styles.labelHint}>Toca el mapa para marcar la ubicación exacta de la sucursal.</Text>
+          <LocationPickerButton
+            latitud={latitud}
+            longitud={longitud}
+            onChange={(lat, lng) => { setLatitud(lat); setLongitud(lng); }}
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
           <Text style={styles.label}>Imagen de la sucursal</Text>
           {imagen ? (
             <View style={styles.previewContainer}>
@@ -183,6 +200,9 @@ export default function AgregarSucursal() {
             </Text>
             <View style={styles.modalResumen}>
               <Text style={styles.resumenItem}>Dirección: {direccion}</Text>
+              <Text style={styles.resumenItem}>
+                Ubicación: {latitud != null ? `${latitud.toFixed(5)}, ${longitud!.toFixed(5)}` : "Sin marcar"}
+              </Text>
               <Text style={styles.resumenItem}>Imagen: {imagen ? "Seleccionada ✓" : "Sin imagen"}</Text>
             </View>
             <View style={styles.modalBtns}>
@@ -222,7 +242,9 @@ const styles = StyleSheet.create({
   scrollContent: { padding: 20, paddingBottom: 40 },
   pageTitle: { fontSize: 24, fontWeight: "700", color: "#2C1819", marginBottom: 24, fontStyle: "italic" },
   inputGroup: { marginBottom: 16 },
-  label: { fontSize: 14, color: "#2C1819", marginBottom: 6, fontWeight: "500" },
+  label: { fontSize: 14, color: "#2C1819", marginBottom: 4, fontWeight: "500" },
+  labelOpcional: { fontSize: 12, color: "#7a9a8a", fontWeight: "400" },
+  labelHint: { fontSize: 12, color: "#7a9a8a", marginBottom: 8 },
   input: {
     backgroundColor: "#6FA58B", borderRadius: 8,
     paddingHorizontal: 14, paddingVertical: 12,

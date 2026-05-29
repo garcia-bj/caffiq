@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ActivityIndicator, Image, Animated,
+  ActivityIndicator, Image, Animated, Linking,
 } from "react-native";
 import { NativeModules } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
@@ -12,12 +12,13 @@ import * as Location from "expo-location";
 import { sucursalesService, type SucursalConCafe } from "@/frontend/services/sucursales.service";
 
 const D = {
-  bg:       "#091A17",
-  card:     "#112820",
-  border:   "#1A3A2C",
-  primary:  "#FFFFFF",
-  secondary:"#8BA89A",
-  accent:   "#4CAF84",
+  bg:       "#ffffff",
+  card:     "#ffffff",
+  border:   "#D4E6DF",
+  surface:  "#F4FAF7",
+  primary:  "#2C1819",
+  secondary:"#6FA58B",
+  accent:   "#0D5A52",
 } as const;
 
 const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_TOKEN ?? "";
@@ -218,10 +219,20 @@ function BottomCard({
         cafeteria_nombre:   sucursal.nom_cafeteria ?? "Cafetería",
         sucursal_nombre:    sucursal.nombre,
         sucursal_direccion: sucursal.direccion,
-        latitud:            sucursal.latitud  != null ? String(sucursal.latitud)  : undefined,
-        longitud:           sucursal.longitud != null ? String(sucursal.longitud) : undefined,
       },
     });
+  };
+
+  const abrirMaps = () => {
+    if (sucursal.latitud == null || sucursal.longitud == null) return;
+    const label  = encodeURIComponent(sucursal.nombre);
+    const lat    = sucursal.latitud;
+    const lng    = sucursal.longitud;
+    const geoUrl = `geo:${lat},${lng}?q=${lat},${lng}(${label})`;
+    const webUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+    Linking.canOpenURL(geoUrl)
+      .then((can) => Linking.openURL(can ? geoUrl : webUrl))
+      .catch(() => Linking.openURL(webUrl));
   };
 
   const bottomPad = insets.bottom + TAB_BAR_HEIGHT + 8;
@@ -262,15 +273,15 @@ function BottomCard({
               </Text>
               <View style={[
                 styles.estadoBadge,
-                estado === "abierto"       && { backgroundColor: "#0D2E1E" },
-                estado === "cierra-pronto" && { backgroundColor: "#3A1D00" },
-                estado === "cerrado"       && { backgroundColor: "#2E0D0D" },
+                estado === "abierto"       && { backgroundColor: "#EDF7F4" },
+                estado === "cierra-pronto" && { backgroundColor: "#FFF8E1" },
+                estado === "cerrado"       && { backgroundColor: "#FFF0F0" },
               ]}>
                 <Text style={[
                   styles.estadoText,
-                  estado === "abierto"       && { color: "#4DC384" },
-                  estado === "cierra-pronto" && { color: "#FF9500" },
-                  estado === "cerrado"       && { color: "#FF6B6B" },
+                  estado === "abierto"       && { color: "#0D5A52" },
+                  estado === "cierra-pronto" && { color: "#B45309" },
+                  estado === "cerrado"       && { color: "#541A1A" },
                 ]}>
                   {estado === "abierto" ? "Abierto" : estado === "cierra-pronto" ? "Cierra pronto" : "Cerrado"}
                 </Text>
@@ -280,10 +291,18 @@ function BottomCard({
         </View>
       </View>
 
-      <TouchableOpacity style={styles.menuBtn} onPress={irAlMenu} activeOpacity={0.85}>
-        <Text style={styles.menuBtnText}>Ver menú</Text>
-        <Ionicons name="arrow-forward" size={16} color="#fff" />
-      </TouchableOpacity>
+      <View style={styles.actionRow}>
+        {sucursal.latitud != null && sucursal.longitud != null ? (
+          <TouchableOpacity style={styles.mapsBtn} onPress={abrirMaps} activeOpacity={0.85}>
+            <Ionicons name="navigate-outline" size={16} color={D.accent} />
+            <Text style={styles.mapsBtnText}>Cómo llegar</Text>
+          </TouchableOpacity>
+        ) : null}
+        <TouchableOpacity style={styles.menuBtn} onPress={irAlMenu} activeOpacity={0.85}>
+          <Text style={styles.menuBtnText}>Ver menú</Text>
+          <Ionicons name="arrow-forward" size={16} color="#fff" />
+        </TouchableOpacity>
+      </View>
     </Animated.View>
   );
 }
@@ -428,13 +447,13 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row", alignItems: "center", justifyContent: "space-between",
     marginHorizontal: 16, marginTop: 12,
-    backgroundColor: "rgba(9,26,23,0.92)",
+    backgroundColor: "#ffffff",
     borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10,
     borderWidth: 1, borderColor: D.border,
   },
   headerLeft:   { flexDirection: "row", alignItems: "center", gap: 8 },
   headerTitle:  { fontSize: 15, fontWeight: "700", color: D.primary },
-  counterBadge: { backgroundColor: D.border, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
+  counterBadge: { backgroundColor: D.surface, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
   counterText:  { fontSize: 12, color: D.accent, fontWeight: "600" },
 
   bottomCard: {
@@ -451,13 +470,13 @@ const styles = StyleSheet.create({
   closeBtn: {
     position: "absolute", top: 16, right: 20,
     width: 28, height: 28, borderRadius: 14,
-    backgroundColor: "#1A3A2C", alignItems: "center", justifyContent: "center",
+    backgroundColor: D.surface, alignItems: "center", justifyContent: "center",
   },
   cardContent: { flexDirection: "row", gap: 14, alignItems: "flex-start", marginBottom: 16 },
   cardImg: { width: 64, height: 64, borderRadius: 12, flexShrink: 0 },
   cardImgPlaceholder: {
     width: 64, height: 64, borderRadius: 12,
-    backgroundColor: "#0D2E1E", alignItems: "center", justifyContent: "center", flexShrink: 0,
+    backgroundColor: D.surface, alignItems: "center", justifyContent: "center", flexShrink: 0,
   },
   cardInfo:      { flex: 1, gap: 4 },
   cardCafeteria: { fontSize: 11, color: D.accent, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5 },
@@ -467,8 +486,15 @@ const styles = StyleSheet.create({
   cardHorario:   { fontSize: 12, color: D.secondary },
   estadoBadge:   { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
   estadoText:    { fontSize: 10, fontWeight: "700" },
+  actionRow: { flexDirection: "row", gap: 10 },
+  mapsBtn: {
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
+    borderRadius: 14, borderWidth: 1.5, borderColor: D.accent,
+    paddingVertical: 14, gap: 6,
+  },
+  mapsBtnText: { fontSize: 14, fontWeight: "700", color: D.accent },
   menuBtn: {
-    backgroundColor: "#0D5A52", borderRadius: 14,
+    flex: 1, backgroundColor: "#0D5A52", borderRadius: 14,
     flexDirection: "row", alignItems: "center", justifyContent: "center",
     paddingVertical: 14, gap: 8,
   },

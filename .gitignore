@@ -2,7 +2,7 @@
 
 # dependencies
 node_modules/
-
+/planificacion
 # Expo
 .expo/
 dist/
@@ -26,9 +26,17 @@ npm-debug.*
 yarn-debug.*
 yarn-error.*
 
+# logs
+*.log
+logs/
+
 # macOS
 .DS_Store
 *.pem
+
+# Windows
+Thumbs.db
+Desktop.ini
 
 # local env files
 .env
@@ -37,10 +45,21 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
+# build output
+build/
+coverage/
+
 app-example
 
 # generated native folders
 /ios
 /android
 
-.claude/settings.local.json
+# editor
+.vscode/
+
+# Claude Code
+.claude/
+
+# planificacion y notas locales
+planificacion/

@@ -1,50 +1,54 @@
 import React, { useState, useEffect } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  SafeAreaView, StatusBar, ScrollView,
+  StatusBar, ScrollView,
   ImageBackground, Modal, Alert, ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { NavbarLateral } from "@/frontend/components/navbar-lateral";
-import { modificarProductoAPI } from "@/frontend/services/menuService";
+import { useAuth } from "@/frontend/context/AuthContext";
+import { productosService, type ProductoPublico } from "@/frontend/services/productos.service";
 import { subirImagenCloudinary } from "@/frontend/services/cloudinary";
-import { api } from "@/frontend/services/api";
-import { Producto } from "@/frontend/types/producto";
 
 export default function EditarProducto() {
   const router = useRouter();
-  const { productoId } = useLocalSearchParams();
+  const { productoId, cafeteria_id: cafParam } = useLocalSearchParams<{ productoId: string; cafeteria_id?: string }>();
+  const { token, usuario } = useAuth();
+  const cafeteriaId = cafParam ?? usuario?.cafeteria_id ?? "";
+
   const [navbarVisible, setNavbarVisible] = useState(false);
   const [modalConfirm, setModalConfirm] = useState(false);
   const [cargando, setCargando] = useState(true);
   const [cargandoGuardar, setCargandoGuardar] = useState(false);
-  const [producto, setProducto] = useState<Producto | null>(null);
+  const [producto, setProducto] = useState<ProductoPublico | null>(null);
 
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [precio, setPrecio] = useState("");
   const [stock, setStock] = useState("");
   const [imagen, setImagen] = useState<string | null>(null);
-  const [suspendido, setSuspendido] = useState(false); // ← controla si está suspendido
+  const [suspendido, setSuspendido] = useState(false);
 
   useEffect(() => {
     cargarProducto();
-  }, []);
+  }, [token, cafeteriaId, productoId]);
 
   const cargarProducto = async () => {
+    if (!token || !cafeteriaId || !productoId) return;
     setCargando(true);
     try {
-      const datos = await api(`/api/menu/${productoId}`, { method: "GET" });
+      const { producto: datos } = await productosService.obtener(token, cafeteriaId, productoId as string);
       setProducto(datos);
-      setNombre(datos.nom_producto || "");
-      setDescripcion(datos.descripcion || "");
-      setPrecio(String(datos.precio || ""));
-      setStock(String(datos.stock || ""));
-      setImagen(datos.imagen_producto || null);
-      setSuspendido(!datos.estado); // ← si estado = false → suspendido = true
-    } catch (error) {
+      setNombre(datos.nombre ?? "");
+      setDescripcion(datos.descripcion ?? "");
+      setPrecio(String(datos.precio ?? ""));
+      setStock(String(datos.stock ?? ""));
+      setImagen(datos.imagen_url ?? null);
+      setSuspendido(!datos.disponible);
+    } catch {
       Alert.alert("Error", "No se pudo cargar el producto");
     } finally {
       setCargando(false);
@@ -66,45 +70,59 @@ export default function EditarProducto() {
 
   const intentarGuardar = () => {
     if (!nombre.trim()) return Alert.alert("Requerido", "El nombre no puede estar vacío.");
-    if (!precio.trim()) return Alert.alert("Requerido", "El precio no puede estar vacío.");
+    const precioNum = Number(precio);
+    if (!precio.trim() || isNaN(precioNum) || precioNum <= 0) {
+      return Alert.alert("Precio inválido", "El precio debe ser un número mayor a 0.");
+    }
+    if (stock.trim()) {
+      const stockNum = Number(stock);
+      if (isNaN(stockNum) || stockNum < 0 || !Number.isInteger(stockNum)) {
+        return Alert.alert("Stock inválido", "El stock debe ser un entero igual o mayor a 0.");
+      }
+      if (stockNum === 0 && !suspendido) {
+        Alert.alert(
+          "Advertencia de stock",
+          "Con stock en 0 el producto quedará como 'No disponible' para los clientes. ¿Continuar?",
+          [
+            { text: "Cancelar", style: "cancel" },
+            { text: "Guardar igual", onPress: () => setModalConfirm(true) },
+          ],
+        );
+        return;
+      }
+    }
     setModalConfirm(true);
   };
 
   const confirmarGuardar = async () => {
+    if (!token || !cafeteriaId || !productoId) return;
     setCargandoGuardar(true);
     setModalConfirm(false);
     try {
-      let urlImagen = imagen || "";
-      if (imagen && imagen.startsWith("file://")) {
+      let urlImagen = imagen ?? "";
+      if (imagen?.startsWith("file://")) {
         urlImagen = await subirImagenCloudinary(imagen);
       }
 
-      const stockNum = stock ? parseInt(stock) : 0;
-
-      // Si está suspendido → estado = false
-      // Si está activo → estado depende del stock
-      const estadoFinal = !suspendido;
-
-      await modificarProductoAPI(productoId as string, {
-        nom_producto: nombre,
-        descripcion: descripcion || undefined,
-        precio,
-        stock: String(stockNum),
+      await productosService.modificar(token, cafeteriaId, productoId as string, {
+        nom_producto:    nombre,
+        descripcion:     descripcion || undefined,
+        precio:          Number(precio),
+        stock:           stock ? Number(stock) : 0,
         imagen_producto: urlImagen || undefined,
-        estado: estadoFinal,
+        estado:          !suspendido,
       });
 
       Alert.alert("✅ Éxito", "Producto actualizado correctamente.", [
         { text: "OK", onPress: () => router.back() },
       ]);
-    } catch (error: any) {
-      Alert.alert("Error", error.message || "No se pudo actualizar el producto");
+    } catch (err: any) {
+      Alert.alert("Error", err.message || "No se pudo actualizar el producto");
     } finally {
       setCargandoGuardar(false);
     }
   };
 
-  // ── Badge informativo ─────────────────────────────────────
   const stockNum = stock ? parseInt(stock) : 0;
 
   const getBadge = () => {
@@ -152,13 +170,11 @@ export default function EditarProducto() {
 
         <Text style={styles.pageTitle}>Datos del Producto</Text>
 
-        {/* Nombre */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Nombre del Producto</Text>
           <TextInput style={styles.input} value={nombre} onChangeText={setNombre} />
         </View>
 
-        {/* Descripción */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Descripcion del Producto</Text>
           <TextInput
@@ -168,70 +184,42 @@ export default function EditarProducto() {
           />
         </View>
 
-        {/* Precio y Stock */}
         <View style={styles.rowGroup}>
           <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
             <Text style={styles.label}>Precio</Text>
-            <TextInput
-              style={styles.input} value={precio}
-              onChangeText={setPrecio} keyboardType="decimal-pad"
-            />
+            <TextInput style={styles.input} value={precio} onChangeText={setPrecio} keyboardType="decimal-pad" />
           </View>
           <View style={[styles.inputGroup, { flex: 1 }]}>
             <Text style={styles.label}>Stock</Text>
-            <TextInput
-              style={styles.input} value={stock}
-              onChangeText={setStock} keyboardType="number-pad"
-            />
+            <TextInput style={styles.input} value={stock} onChangeText={setStock} keyboardType="number-pad" />
           </View>
         </View>
 
-        {/* Estado — checks manuales */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Estado del producto</Text>
           <View style={styles.estadoRow}>
-            {/* Activo */}
-            <TouchableOpacity
-              style={styles.radioOption}
-              onPress={() => setSuspendido(false)}
-            >
+            <TouchableOpacity style={styles.radioOption} onPress={() => setSuspendido(false)}>
               <View style={[styles.radioCircle, !suspendido && styles.radioActivo]} />
               <Text style={styles.radioLabel}>Activo</Text>
             </TouchableOpacity>
-
-            {/* Suspendido */}
-            <TouchableOpacity
-              style={styles.radioOption}
-              onPress={() => setSuspendido(true)}
-            >
+            <TouchableOpacity style={styles.radioOption} onPress={() => setSuspendido(true)}>
               <View style={[styles.radioCircle, suspendido && styles.radioSuspendido]} />
               <Text style={styles.radioLabel}>Suspendido</Text>
             </TouchableOpacity>
           </View>
-
-          {/* Badge informativo */}
           <View style={styles.badgeRow}>
             <View style={[styles.estadoBadge, { backgroundColor: badge.color }]}>
               <Text style={styles.estadoBadgeText}>{badge.label}</Text>
             </View>
-            {!suspendido && (
-              <Text style={styles.estadoHint}>
-                (Disponibilidad según stock)
-              </Text>
-            )}
+            {!suspendido && <Text style={styles.estadoHint}>(Disponibilidad según stock)</Text>}
           </View>
         </View>
 
-        {/* Imagen */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Foto del Producto</Text>
           {imagen ? (
             <View style={styles.previewContainer}>
-              <ImageBackground
-                source={{ uri: imagen }}
-                style={styles.previewImage}
-                imageStyle={{ borderRadius: 10 }}
-              >
+              <ImageBackground source={{ uri: imagen }} style={styles.previewImage} imageStyle={{ borderRadius: 10 }}>
                 <TouchableOpacity style={styles.removeBtn} onPress={() => setImagen(null)}>
                   <Ionicons name="close" size={16} color="#fff" />
                 </TouchableOpacity>
@@ -262,7 +250,6 @@ export default function EditarProducto() {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Modal confirmación */}
       <Modal transparent visible={modalConfirm} animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>

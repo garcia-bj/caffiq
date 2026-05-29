@@ -1,4 +1,12 @@
+import * as WebBrowser from "expo-web-browser";
+import * as Linking from "expo-linking";
+
 const BASE_URL = `${process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000"}/api`;
+
+function getRedirectScheme(): string {
+  const url = Linking.createURL("/");
+  return url.split("://")[0] ?? "caffiq";
+}
 
 type Rol = "cliente" | "admin";
 
@@ -16,6 +24,21 @@ export interface UsuarioPublico {
 interface AuthResponse {
   token: string;
   usuario: UsuarioPublico;
+}
+
+function parseRedirectUrl(url: string): Record<string, string> {
+  const params: Record<string, string> = {};
+  const idx = url.indexOf("?");
+  if (idx === -1) return params;
+  url.substring(idx + 1).split("&").forEach((pair) => {
+    const eq = pair.indexOf("=");
+    if (eq > 0) params[pair.substring(0, eq)] = decodeURIComponent(pair.substring(eq + 1));
+  });
+  return params;
+}
+
+interface GoogleLoginResult extends AuthResponse {
+  necesita_telefono: boolean;
 }
 
 // ─── Helper para fetch con JSON ───────────────────────────────────────────────
@@ -84,4 +107,27 @@ export const authService = {
       body: JSON.stringify(datos),
       headers: { Authorization: `Bearer ${token}` },
     }),
+
+  googleLogin: async (rol: "cliente" | "admin"): Promise<GoogleLoginResult> => {
+    const scheme = getRedirectScheme();
+    const redirectUrl = `${scheme}://auth/callback`;
+    const result = await WebBrowser.openAuthSessionAsync(
+      `${BASE_URL}/auth/google?rol=${rol}&platform=mobile&scheme=${encodeURIComponent(scheme)}`,
+      redirectUrl,
+    );
+    if (result.type !== "success") {
+      throw new Error("Inicio de sesion con Google cancelado");
+    }
+    const params = parseRedirectUrl(result.url);
+    const token = params.token;
+    const usuarioRaw = params.usuario;
+    if (!token || !usuarioRaw) {
+      throw new Error("No se recibieron los datos de autenticacion");
+    }
+    return {
+      token,
+      usuario: JSON.parse(usuarioRaw) as UsuarioPublico,
+      necesita_telefono: params.necesita_telefono === "true",
+    };
+  },
 };

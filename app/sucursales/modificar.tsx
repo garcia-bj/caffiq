@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, SafeAreaView, StatusBar,
+  StyleSheet, StatusBar,
   ScrollView, Image, Alert, Modal, ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { NavbarLateral } from "@/frontend/components/navbar-lateral";
+import { LocationPickerButton } from "@/frontend/components/LocationPickerButton";
 import { useAuth } from "@/frontend/context/AuthContext";
 import { sucursalesService, type SucursalPublica } from "@/frontend/services/sucursales.service";
 import { subirImagenCloudinary } from "@/frontend/services/cloudinary.service";
@@ -21,6 +23,8 @@ export default function ModificarSucursal() {
   const [nombre, setNombre] = useState("");
   const [direccion, setDireccion] = useState("");
   const [ciudad, setCiudad] = useState("");
+  const [latitud, setLatitud] = useState<number | null>(null);
+  const [longitud, setLongitud] = useState<number | null>(null);
   const [imagenActual, setImagenActual] = useState<string | null>(null);
   const [modalConfirm, setModalConfirm] = useState(false);
 
@@ -37,6 +41,8 @@ export default function ModificarSucursal() {
     setNombre(s.nombre);
     setDireccion(s.direccion ?? "");
     setCiudad(s.ciudad ?? "");
+    setLatitud(s.latitud  ?? null);
+    setLongitud(s.longitud ?? null);
     setImagenActual(s.imagen_url ?? null);
     setDropdownOpen(false);
   };
@@ -69,20 +75,21 @@ export default function ModificarSucursal() {
     setCargandoGuardar(true);
     try {
       let imagen_url: string | undefined = imagenActual ?? undefined;
-      // Si la imagen cambió (URI local, no URL https), subirla a Cloudinary
       if (imagenActual && !imagenActual.startsWith("http")) {
         imagen_url = await subirImagenCloudinary(imagenActual);
       }
 
       const { sucursal } = await sucursalesService.modificar(
         token, usuario.cafeteria_id, seleccionada.id,
-        { nombre, direccion, ciudad, imagen_url }
+        { nombre, direccion, ciudad, imagen_url, latitud, longitud }
       );
       setModalConfirm(false);
       Alert.alert("Éxito", "Sucursal actualizada correctamente.");
       setSucursales((prev) => prev.map((s) => s.id === sucursal.id ? sucursal : s));
       setSeleccionada(null);
-      setNombre(""); setDireccion(""); setCiudad(""); setImagenActual(null);
+      setNombre(""); setDireccion(""); setCiudad("");
+      setLatitud(null); setLongitud(null);
+      setImagenActual(null);
     } catch (error: any) {
       setModalConfirm(false);
       Alert.alert("Error", error.message ?? "No se pudo actualizar la sucursal");
@@ -161,6 +168,23 @@ export default function ModificarSucursal() {
         </View>
 
         <View style={styles.inputGroup}>
+          <Text style={styles.label}>
+            Ubicación en el mapa <Text style={styles.labelOpcional}>(opcional)</Text>
+          </Text>
+          <Text style={styles.labelHint}>
+            {seleccionada
+              ? "Toca el mapa para cambiar la ubicación de la sucursal."
+              : "Selecciona primero una sucursal para editar su ubicación."}
+          </Text>
+          <LocationPickerButton
+            key={seleccionada?.id ?? "empty"}
+            latitud={latitud}
+            longitud={longitud}
+            onChange={(lat, lng) => { setLatitud(lat); setLongitud(lng); }}
+          />
+        </View>
+
+        <View style={styles.inputGroup}>
           <Text style={styles.label}>Imagen de la sucursal</Text>
           {imagenActual ? (
             <View style={styles.previewContainer}>
@@ -205,6 +229,9 @@ export default function ModificarSucursal() {
               <Text style={styles.resumenItem}>Dirección: {direccion}</Text>
               <Text style={styles.resumenItem}>Ciudad: {ciudad}</Text>
               <Text style={styles.resumenItem}>
+                Ubicación: {latitud != null ? `${latitud.toFixed(5)}, ${longitud!.toFixed(5)}` : "Sin marcar"}
+              </Text>
+              <Text style={styles.resumenItem}>
                 Imagen: {imagenActual ? "Actualizada" : "Sin imagen"}
               </Text>
             </View>
@@ -245,7 +272,9 @@ const styles = StyleSheet.create({
   scrollContent: { padding: 20, paddingBottom: 40 },
   pageTitle: { fontSize: 24, fontWeight: "700", color: "#2C1819", marginBottom: 24, fontStyle: "italic" },
   inputGroup: { marginBottom: 16 },
-  label: { fontSize: 14, color: "#2C1819", marginBottom: 6, fontWeight: "500" },
+  label: { fontSize: 14, color: "#2C1819", marginBottom: 4, fontWeight: "500" },
+  labelOpcional: { fontSize: 12, color: "#7a9a8a", fontWeight: "400" },
+  labelHint: { fontSize: 12, color: "#7a9a8a", marginBottom: 8 },
   input: {
     backgroundColor: "#6FA58B", borderRadius: 8,
     paddingHorizontal: 14, paddingVertical: 12,

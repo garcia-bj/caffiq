@@ -1,9 +1,5 @@
 import { useState } from "react";
-import {
-  View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, Alert, ActivityIndicator, Platform,
-  TextInput, Keyboard,
-} from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Platform, TextInput, Keyboard } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -11,36 +7,24 @@ import { useAuth } from "@/frontend/context/AuthContext";
 import { authService } from "@/frontend/services/auth.service";
 
 const D = {
-  bg:         "#091A17",
-  card:       "#112820",
-  cardBorder: "#1A3A2C",
-  primary:    "#FFFFFF",
-  secondary:  "#8BA89A",
-  label:      "#4A8A72",
-  accent:     "#4CAF84",
-  accentBg:   "#0D2E1E",
-  inputBg:    "#0D2118",
-  red:        "#FF6B6B",
-  redBg:      "rgba(255,107,107,0.1)",
-  redBorder:  "rgba(255,107,107,0.25)",
-  avatarBg:   "#1A3D2A",
-  adminBg:    "#1A2E3D",
-  adminText:  "#4CA8CF",
+  bg:         "#EDF7F4",
+  card:       "#ffffff",
+  cardBorder: "#C8DDD7",
+  surface:    "#D4EDE6",
+  primary:    "#2C1819",
+  secondary:  "#6FA58B",
+  accent:     "#0D5A52",
+  accentBg:   "#C0DDD5",
+  border:     "#C8DDD7",
+  danger:     "#541A1A",
+  dangerBg:   "#FFF0F0",
+  dangerBorder:"#FECACA",
 } as const;
 
-/* ─── InfoRow (modo vista) ─────────────────────────────────────── */
-function InfoRow({
-  icon, label, value,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  value: string;
-}) {
+function InfoRow({ icon, label, value }: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string }) {
   return (
     <View style={styles.infoRow}>
-      <View style={styles.infoIconWrap}>
-        <Ionicons name={icon} size={18} color={D.accent} />
-      </View>
+      <View style={styles.iconWrap}><Ionicons name={icon} size={17} color={D.accent} /></View>
       <View style={styles.infoText}>
         <Text style={styles.infoLabel}>{label}</Text>
         <Text style={styles.infoValue} numberOfLines={1}>{value || "—"}</Text>
@@ -49,176 +33,104 @@ function InfoRow({
   );
 }
 
-/* ─── EditRow (modo edición) ──────────────────────────────────── */
-function EditRow({
-  icon, label, value, onChange, placeholder, keyboardType,
-}: {
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
+function EditRow({ icon, label, value, onChange, placeholder, keyboardType }: {
+  icon: keyof typeof Ionicons.glyphMap; label: string; value: string;
+  onChange: (v: string) => void; placeholder?: string;
   keyboardType?: "default" | "phone-pad" | "email-address";
 }) {
   return (
     <View style={styles.infoRow}>
-      <View style={[styles.infoIconWrap, { backgroundColor: "#1A3D2A" }]}>
-        <Ionicons name={icon} size={18} color={D.accent} />
-      </View>
+      <View style={[styles.iconWrap, { backgroundColor: D.accentBg }]}><Ionicons name={icon} size={17} color={D.accent} /></View>
       <View style={styles.infoText}>
         <Text style={styles.infoLabel}>{label}</Text>
-        <TextInput
-          style={styles.editInput}
-          value={value}
-          onChangeText={onChange}
-          placeholder={placeholder ?? label}
-          placeholderTextColor={D.secondary}
-          keyboardType={keyboardType ?? "default"}
-          autoCorrect={false}
-        />
+        <TextInput style={styles.editInput} value={value} onChangeText={onChange} placeholder={placeholder ?? label} placeholderTextColor={D.secondary} keyboardType={keyboardType ?? "default"} autoCorrect={false} />
       </View>
     </View>
   );
 }
 
-/* ─── Screen ──────────────────────────────────────────────────── */
 export default function PerfilScreen() {
   const { usuario, token, setUsuario, logout } = useAuth() as any;
   const [loggingOut, setLoggingOut] = useState(false);
   const [editMode,   setEditMode]   = useState(false);
   const [saving,     setSaving]     = useState(false);
-
-  // Campos editables
   const [nomCompleto, setNomCompleto] = useState(usuario?.nom_completo ?? "");
   const [telefono,    setTelefono]    = useState(usuario?.num_telefono ?? "");
 
   const handleLogout = async () => {
-    if (Platform.OS === "web") {
-      if (!window.confirm("¿Estás seguro que deseas cerrar sesión?")) return;
+    const doLogout = async () => {
       setLoggingOut(true);
       await logout();
       router.replace("/(auth)/welcome");
+    };
+    if (Platform.OS === "web") {
+      if (window.confirm("¿Cerrar sesión?")) doLogout();
     } else {
-      Alert.alert(
-        "Cerrar sesión",
-        "¿Estás seguro que deseas salir?",
-        [
-          { text: "Cancelar", style: "cancel" },
-          {
-            text: "Cerrar sesión",
-            style: "destructive",
-            onPress: async () => {
-              setLoggingOut(true);
-              await logout();
-              router.replace("/(auth)/welcome");
-            },
-          },
-        ]
-      );
+      Alert.alert("Cerrar sesión", "¿Estás seguro que deseas salir?", [
+        { text: "Cancelar", style: "cancel" },
+        { text: "Cerrar sesión", style: "destructive", onPress: doLogout },
+      ]);
     }
   };
 
-  const handleEdit = () => {
-    setNomCompleto(usuario?.nom_completo ?? "");
-    setTelefono(usuario?.num_telefono ?? "");
-    setEditMode(true);
-  };
-
-  const handleCancel = () => {
-    setEditMode(false);
-    Keyboard.dismiss();
-  };
+  const handleEdit = () => { setNomCompleto(usuario?.nom_completo ?? ""); setTelefono(usuario?.num_telefono ?? ""); setEditMode(true); };
+  const handleCancel = () => { setEditMode(false); Keyboard.dismiss(); };
 
   const handleSave = async () => {
-    if (!nomCompleto.trim()) {
-      Alert.alert("Error", "El nombre no puede estar vacío.");
-      return;
-    }
+    if (!nomCompleto.trim()) { Alert.alert("Error", "El nombre no puede estar vacío."); return; }
     if (!token) return;
     try {
       setSaving(true);
-      const updated = await authService.updateMe(token, {
-        nom_completo: nomCompleto.trim(),
-        num_telefono: telefono.trim(),
-      });
-      // Actualizar contexto local
-      if (setUsuario && updated.usuario) {
-        setUsuario(updated.usuario);
-      }
-      setEditMode(false);
-      Keyboard.dismiss();
-      Alert.alert("✓ Guardado", "Tu perfil ha sido actualizado.");
+      const updated = await authService.updateMe(token, { nom_completo: nomCompleto.trim(), num_telefono: telefono.trim() });
+      if (setUsuario && updated.usuario) setUsuario(updated.usuario);
+      setEditMode(false); Keyboard.dismiss();
+      Alert.alert("Guardado", "Tu perfil fue actualizado.");
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Error al guardar";
-      Alert.alert("Error", msg);
-    } finally {
-      setSaving(false);
-    }
+      Alert.alert("Error", e instanceof Error ? e.message : "Error al guardar");
+    } finally { setSaving(false); }
   };
 
-  const isAdmin  = usuario?.rol === "admin";
-  const inicial  = usuario?.nom_completo?.charAt(0).toUpperCase() ?? "U";
-  const joinDate = usuario?.created_at
-    ? new Date(usuario.created_at).toLocaleDateString("es-MX", {
-        year: "numeric", month: "long", day: "numeric",
-      })
-    : "—";
+  const isAdmin = usuario?.rol === "admin";
+  const inicial = usuario?.nom_completo?.charAt(0).toUpperCase() ?? "U";
+  const joinDate = usuario?.created_at ? new Date(usuario.created_at).toLocaleDateString("es-MX", { year: "numeric", month: "long", day: "numeric" }) : "—";
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* ── Header / Avatar ─────────────────────────────────── */}
-        <View style={styles.header}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+
+        {/* ── Hero header ── */}
+        <View style={styles.hero}>
           <View style={styles.avatarWrap}>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>{inicial}</Text>
             </View>
-            {/* Botón editar sobre avatar */}
             {!editMode && (
               <TouchableOpacity style={styles.editAvatarBtn} onPress={handleEdit}>
-                <Ionicons name="create-outline" size={14} color={D.primary} />
+                <Ionicons name="create-outline" size={13} color="#fff" />
               </TouchableOpacity>
             )}
-            <View style={[styles.rolBadge, isAdmin && styles.rolBadgeAdmin]}>
-              <Ionicons
-                name={isAdmin ? "storefront-outline" : "person-outline"}
-                size={11}
-                color={isAdmin ? D.adminText : D.accent}
-              />
-              <Text style={[styles.rolBadgeText, isAdmin && { color: D.adminText }]}>
-                {isAdmin ? "Administrador" : "Cliente"}
-              </Text>
-            </View>
           </View>
-          <Text style={styles.nombre}>{usuario?.nom_completo ?? "Usuario"}</Text>
-          <Text style={styles.correo}>{usuario?.nom_usuario ?? ""}</Text>
+          <Text style={styles.heroName}>{usuario?.nom_completo ?? "Usuario"}</Text>
+          <View style={[styles.rolBadge, isAdmin && styles.rolBadgeAdmin]}>
+            <Ionicons name={isAdmin ? "storefront-outline" : "person-outline"} size={11} color={isAdmin ? "#fff" : D.accent} />
+            <Text style={[styles.rolText, isAdmin && styles.rolTextAdmin]}>{isAdmin ? "Administrador" : "Cliente"}</Text>
+          </View>
         </View>
 
-        {/* ── Tarjeta de información / edición ──────────────── */}
+        {/* ── Tarjeta de info ── */}
         <View style={styles.card}>
-          <View style={styles.cardTitleRow}>
-            <Text style={styles.cardTitle}>
-              {editMode ? "EDITAR PERFIL" : "INFORMACIÓN DE CUENTA"}
-            </Text>
+          <View style={styles.cardTitle}>
+            <Text style={styles.cardTitleText}>{editMode ? "EDITAR PERFIL" : "INFORMACIÓN"}</Text>
             {!editMode ? (
               <TouchableOpacity onPress={handleEdit} style={styles.editBtn}>
-                <Ionicons name="create-outline" size={14} color={D.accent} />
+                <Ionicons name="create-outline" size={13} color={D.accent} />
                 <Text style={styles.editBtnText}>Editar</Text>
               </TouchableOpacity>
             ) : (
               <View style={styles.editActions}>
-                <TouchableOpacity onPress={handleCancel} style={styles.cancelBtn}>
-                  <Text style={styles.cancelBtnText}>Cancelar</Text>
-                </TouchableOpacity>
+                <TouchableOpacity onPress={handleCancel} style={styles.cancelBtn}><Text style={styles.cancelBtnText}>Cancelar</Text></TouchableOpacity>
                 <TouchableOpacity onPress={handleSave} style={styles.saveBtn} disabled={saving}>
-                  {saving
-                    ? <ActivityIndicator size="small" color={D.primary} />
-                    : <Text style={styles.saveBtnText}>Guardar</Text>
-                  }
+                  {saving ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.saveBtnText}>Guardar</Text>}
                 </TouchableOpacity>
               </View>
             )}
@@ -226,26 +138,13 @@ export default function PerfilScreen() {
 
           {editMode ? (
             <>
-              <EditRow
-                icon="person-circle-outline"
-                label="Nombre completo"
-                value={nomCompleto}
-                onChange={setNomCompleto}
-                placeholder="Tu nombre completo"
-              />
+              <EditRow icon="person-circle-outline" label="Nombre completo" value={nomCompleto} onChange={setNomCompleto} placeholder="Tu nombre completo" />
               <View style={styles.divider} />
-              <EditRow
-                icon="call-outline"
-                label="WhatsApp"
-                value={telefono}
-                onChange={setTelefono}
-                placeholder="+521XXXXXXXXXX"
-                keyboardType="phone-pad"
-              />
+              <EditRow icon="call-outline" label="WhatsApp" value={telefono} onChange={setTelefono} placeholder="+591XXXXXXXX" keyboardType="phone-pad" />
               <View style={styles.divider} />
-              <InfoRow icon="mail-outline"     label="Correo (no editable)"   value={usuario?.nom_usuario  ?? ""} />
+              <InfoRow icon="mail-outline"     label="Correo (no editable)" value={usuario?.nom_usuario ?? ""} />
               <View style={styles.divider} />
-              <InfoRow icon="calendar-outline" label="Miembro desde"           value={joinDate} />
+              <InfoRow icon="calendar-outline" label="Miembro desde"        value={joinDate} />
             </>
           ) : (
             <>
@@ -255,54 +154,41 @@ export default function PerfilScreen() {
               <View style={styles.divider} />
               <InfoRow icon="calendar-outline" label="Miembro desde"      value={joinDate} />
               <View style={styles.divider} />
-              <InfoRow
-                icon={usuario?.telefono_verificado ? "checkmark-circle-outline" : "close-circle-outline"}
-                label="Teléfono verificado"
-                value={usuario?.telefono_verificado ? "Verificado ✓" : "Sin verificar"}
-              />
+              <InfoRow icon={usuario?.telefono_verificado ? "checkmark-circle-outline" : "close-circle-outline"} label="Teléfono" value={usuario?.telefono_verificado ? "Verificado ✓" : "Sin verificar"} />
             </>
           )}
         </View>
 
-        {/* ── Configuración ─────────────────────────────────── */}
+        {/* ── Opciones ── */}
         {!editMode && (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>CONFIGURACIÓN</Text>
-            <TouchableOpacity style={styles.optionRow} onPress={handleEdit}>
-              <Ionicons name="create-outline" size={20} color={D.accent} />
-              <Text style={styles.optionText}>Editar perfil</Text>
-              <Ionicons name="chevron-forward" size={16} color={D.secondary} style={{ marginLeft: "auto" }} />
+            <Text style={styles.cardTitleText} style={[styles.cardTitleText, { paddingHorizontal: 16, paddingTop: 14 }]}>CONFIGURACIÓN</Text>
+            <TouchableOpacity style={styles.optRow} onPress={handleEdit}>
+              <View style={styles.iconWrap}><Ionicons name="create-outline" size={17} color={D.accent} /></View>
+              <Text style={styles.optText}>Editar perfil</Text>
+              <Ionicons name="chevron-forward" size={15} color={D.secondary} style={{ marginLeft: "auto" }} />
             </TouchableOpacity>
             <View style={styles.divider} />
-            <TouchableOpacity style={styles.optionRow} onPress={() => Alert.alert("Próximamente", "Notificaciones en desarrollo.")}>
-              <Ionicons name="notifications-outline" size={20} color={D.accent} />
-              <Text style={styles.optionText}>Notificaciones</Text>
-              <Ionicons name="chevron-forward" size={16} color={D.secondary} style={{ marginLeft: "auto" }} />
+            <TouchableOpacity style={styles.optRow} onPress={() => router.push("/(tabs)/mis-pedidos" as never)}>
+              <View style={styles.iconWrap}><Ionicons name="receipt-outline" size={17} color={D.accent} /></View>
+              <Text style={styles.optText}>Mis pedidos</Text>
+              <Ionicons name="chevron-forward" size={15} color={D.secondary} style={{ marginLeft: "auto" }} />
             </TouchableOpacity>
             <View style={styles.divider} />
-            <TouchableOpacity style={styles.optionRow} onPress={() => Alert.alert("Próximamente", "Ayuda en desarrollo.")}>
-              <Ionicons name="help-circle-outline" size={20} color={D.accent} />
-              <Text style={styles.optionText}>Ayuda y soporte</Text>
-              <Ionicons name="chevron-forward" size={16} color={D.secondary} style={{ marginLeft: "auto" }} />
+            <TouchableOpacity style={styles.optRow} onPress={() => Alert.alert("Próximamente", "Ayuda en desarrollo.")}>
+              <View style={styles.iconWrap}><Ionicons name="help-circle-outline" size={17} color={D.accent} /></View>
+              <Text style={styles.optText}>Ayuda y soporte</Text>
+              <Ionicons name="chevron-forward" size={15} color={D.secondary} style={{ marginLeft: "auto" }} />
             </TouchableOpacity>
           </View>
         )}
 
-        {/* ── Cerrar sesión ─────────────────────────────────── */}
-        <TouchableOpacity
-          style={styles.logoutBtn}
-          onPress={handleLogout}
-          disabled={loggingOut}
-          activeOpacity={0.8}
-        >
-          {loggingOut ? (
-            <ActivityIndicator color={D.red} />
-          ) : (
-            <>
-              <Ionicons name="log-out-outline" size={20} color={D.red} />
-              <Text style={styles.logoutText}>Cerrar sesión</Text>
-            </>
-          )}
+        {/* ── Logout ── */}
+        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} disabled={loggingOut} activeOpacity={0.85}>
+          {loggingOut
+            ? <ActivityIndicator color={D.danger} />
+            : <><Ionicons name="log-out-outline" size={19} color={D.danger} /><Text style={styles.logoutText}>Cerrar sesión</Text></>
+          }
         </TouchableOpacity>
 
         <Text style={styles.version}>Caffiq v1.0.0</Text>
@@ -313,53 +199,43 @@ export default function PerfilScreen() {
 
 const styles = StyleSheet.create({
   safe:   { flex: 1, backgroundColor: D.bg },
-  scroll: { paddingBottom: 100 },
+  scroll: { paddingBottom: 110 },
 
-  // Header
-  header:         { alignItems: "center", paddingTop: 32, paddingBottom: 24, paddingHorizontal: 24 },
-  avatarWrap:     { alignItems: "center", marginBottom: 12 },
-  avatar:         { width: 88, height: 88, borderRadius: 44, backgroundColor: D.avatarBg, alignItems: "center", justifyContent: "center", borderWidth: 3, borderColor: `${D.accent}50` },
-  avatarText:     { fontSize: 36, fontWeight: "800", color: D.accent },
-  editAvatarBtn:  { position: "absolute", bottom: 26, right: -8, width: 26, height: 26, borderRadius: 13, backgroundColor: D.chipActive, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: D.bg },
-  rolBadge:       { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, backgroundColor: D.accentBg, marginTop: 8 },
-  rolBadgeAdmin:  { backgroundColor: D.adminBg },
-  rolBadgeText:   { fontSize: 11, fontWeight: "700", color: D.accent, letterSpacing: 0.5 },
-  nombre:         { fontSize: 22, fontWeight: "800", color: D.primary, marginBottom: 4 },
-  correo:         { fontSize: 13, color: D.secondary },
+  hero: { backgroundColor: D.accent, alignItems: "center", paddingTop: 28, paddingBottom: 32, paddingHorizontal: 24 },
+  avatarWrap: { alignItems: "center", marginBottom: 12 },
+  avatar: { width: 88, height: 88, borderRadius: 44, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", borderWidth: 3, borderColor: "rgba(255,255,255,0.4)" },
+  avatarText: { fontSize: 36, fontWeight: "800", color: "#fff" },
+  editAvatarBtn: { position: "absolute", bottom: 0, right: -6, width: 26, height: 26, borderRadius: 13, backgroundColor: D.secondary, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: D.accent },
+  rolBadge: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.2)", marginTop: 6 },
+  rolBadgeAdmin: { backgroundColor: "rgba(255,255,255,0.15)" },
+  rolText: { fontSize: 12, fontWeight: "700", color: "rgba(255,255,255,0.9)" },
+  rolTextAdmin: { color: "#fff" },
+  heroName: { fontSize: 22, fontWeight: "800", color: "#fff", marginBottom: 4 },
 
-  // Cards
-  card:         { marginHorizontal: 16, marginBottom: 12, backgroundColor: D.card, borderRadius: 16, borderWidth: 1, borderColor: D.cardBorder, overflow: "hidden" },
-  cardTitleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10 },
-  cardTitle:    { fontSize: 10, fontWeight: "700", color: D.label, letterSpacing: 1.5 },
-  divider:      { height: 1, backgroundColor: D.cardBorder, marginHorizontal: 16 },
+  card: { marginHorizontal: 16, marginTop: 14, backgroundColor: D.card, borderRadius: 18, borderWidth: 1, borderColor: D.cardBorder, overflow: "hidden", shadowColor: "#0D5A52", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 },
+  cardTitle: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingTop: 14, paddingBottom: 10 },
+  cardTitleText: { fontSize: 10, fontWeight: "800", color: D.secondary, letterSpacing: 1.5 },
+  divider: { height: 1, backgroundColor: D.surface, marginHorizontal: 16 },
 
-  // Edit controls
-  editBtn:       { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, backgroundColor: D.accentBg, borderWidth: 1, borderColor: `${D.accent}40` },
-  editBtnText:   { fontSize: 12, fontWeight: "700", color: D.accent },
-  editActions:   { flexDirection: "row", gap: 8 },
-  cancelBtn:     { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, backgroundColor: D.cardBorder },
+  editBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, backgroundColor: D.accentBg, borderWidth: 1, borderColor: D.border },
+  editBtnText: { fontSize: 12, fontWeight: "700", color: D.accent },
+  editActions: { flexDirection: "row", gap: 8 },
+  cancelBtn: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, backgroundColor: D.surface, borderWidth: 1, borderColor: D.border },
   cancelBtnText: { fontSize: 12, fontWeight: "700", color: D.secondary },
-  saveBtn:       { paddingHorizontal: 14, paddingVertical: 5, borderRadius: 10, backgroundColor: D.accent },
-  saveBtnText:   { fontSize: 12, fontWeight: "700", color: D.primary },
+  saveBtn: { paddingHorizontal: 14, paddingVertical: 5, borderRadius: 10, backgroundColor: D.accent },
+  saveBtnText: { fontSize: 12, fontWeight: "700", color: "#fff" },
 
-  // Info row
-  infoRow:      { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12, gap: 12 },
-  infoIconWrap: { width: 36, height: 36, borderRadius: 10, backgroundColor: D.accentBg, alignItems: "center", justifyContent: "center" },
-  infoText:     { flex: 1 },
-  infoLabel:    { fontSize: 11, color: D.secondary, marginBottom: 2 },
-  infoValue:    { fontSize: 14, fontWeight: "600", color: D.primary },
-  editInput:    { fontSize: 14, fontWeight: "600", color: D.primary, borderBottomWidth: 1, borderBottomColor: `${D.accent}60`, paddingVertical: 2 },
+  infoRow:  { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 13, gap: 12 },
+  iconWrap: { width: 36, height: 36, borderRadius: 10, backgroundColor: D.surface, alignItems: "center", justifyContent: "center" },
+  infoText: { flex: 1 },
+  infoLabel:{ fontSize: 11, color: D.secondary, marginBottom: 2 },
+  infoValue:{ fontSize: 14, fontWeight: "600", color: D.primary },
+  editInput:{ fontSize: 14, fontWeight: "600", color: D.primary, borderBottomWidth: 1.5, borderBottomColor: D.accent, paddingVertical: 2 },
 
-  // Option row
-  optionRow:  { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
-  optionText: { fontSize: 14, fontWeight: "600", color: D.primary },
+  optRow:  { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
+  optText: { fontSize: 14, fontWeight: "600", color: D.primary },
 
-  // Logout
-  logoutBtn:  { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, marginHorizontal: 16, marginTop: 8, paddingVertical: 16, backgroundColor: D.redBg, borderRadius: 16, borderWidth: 1, borderColor: D.redBorder },
-  logoutText: { fontSize: 16, fontWeight: "700", color: D.red },
-
-  version: { textAlign: "center", fontSize: 11, color: D.label, marginTop: 20 },
-
-  // alias para el chipActive que se usa en editAvatarBtn
-  chipActive: { backgroundColor: "#1A7A58" },
+  logoutBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, marginHorizontal: 16, marginTop: 14, paddingVertical: 16, backgroundColor: D.dangerBg, borderRadius: 16, borderWidth: 1, borderColor: D.dangerBorder },
+  logoutText:{ fontSize: 15, fontWeight: "700", color: D.danger },
+  version:   { textAlign: "center", fontSize: 11, color: D.secondary, marginTop: 20 },
 });

@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "@config/supabase";
 import type { IProductoRepository } from "../../domain/repositories/IProductoRepository";
-import type { ProductoEntity, CrearProductoData } from "../../domain/entities/Producto";
+import type { ProductoEntity, CrearProductoData, ModificarProductoData } from "../../domain/entities/Producto";
 
 const PRODUCTO        = "Producto";
 const SUCURSAL_PROD   = "Sucursal_producto";
@@ -31,6 +31,19 @@ export class SupabaseProductoRepository implements IProductoRepository {
     return (data ?? [])
       .map((sp: any) => sp.Producto)
       .filter((p: any) => p?.estado === true) as ProductoEntity[];
+  }
+
+  async listarPorSucursal(sucursal_id: string, todos: boolean): Promise<ProductoEntity[]> {
+    const { data, error } = await supabaseAdmin
+      .from(SUCURSAL_PROD)
+      .select(`Producto ( id_producto, nom_producto, descripcion, precio, stock, estado, imagen_producto )`)
+      .eq("id_sucursal", sucursal_id);
+
+    if (error) throw new Error(error.message);
+
+    return (data ?? [])
+      .map((sp: any) => sp.Producto)
+      .filter((p: any): p is ProductoEntity => p != null && (todos || p.estado === true));
   }
 
   async buscarPorId(id: string): Promise<ProductoEntity | null> {
@@ -71,6 +84,26 @@ export class SupabaseProductoRepository implements IProductoRepository {
     if (errAssoc) throw new Error(errAssoc.message);
 
     return productoCreado as ProductoEntity;
+  }
+
+  async modificar(id: string, datos: ModificarProductoData): Promise<ProductoEntity> {
+    const update: Record<string, unknown> = {};
+    if (datos.nom_producto  !== undefined) update.nom_producto   = datos.nom_producto;
+    if (datos.descripcion   !== undefined) update.descripcion    = datos.descripcion;
+    if (datos.precio        !== undefined) update.precio         = datos.precio;
+    if (datos.stock         !== undefined) update.stock          = datos.stock;
+    if (datos.imagen_producto !== undefined) update.imagen_producto = datos.imagen_producto;
+    if (datos.estado        !== undefined) update.estado         = datos.estado;
+
+    const { data, error } = await supabaseAdmin
+      .from(PRODUCTO)
+      .update(update)
+      .eq("id_producto", id)
+      .select()
+      .single();
+
+    if (error || !data) throw new Error(error?.message ?? "Error al modificar producto");
+    return data as ProductoEntity;
   }
 
   async suspender(id: string): Promise<void> {

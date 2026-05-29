@@ -1,39 +1,41 @@
 import React, { useState, useEffect } from "react";
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  SafeAreaView, StatusBar, ScrollView, Image, Modal,
+  StatusBar, ScrollView, Image, Modal,
   ActivityIndicator, Alert,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { NavbarLateral } from "@/frontend/components/navbar-lateral";
 import { Ionicons } from "@expo/vector-icons";
-import { getSucursalesAPI } from "@/frontend/services/sucursalService";
-import { listarProductosAPI, suspenderProductoAPI } from "@/frontend/services/menuService";
-import { Sucursal } from "@/frontend/types/sucursal";
-import { Producto } from "@/frontend/types/producto";
+import { useAuth } from "@/frontend/context/AuthContext";
+import { sucursalesService, type SucursalPublica } from "@/frontend/services/sucursales.service";
+import { productosService, type ProductoPublico } from "@/frontend/services/productos.service";
 
 export default function EliminarProductoMenu() {
+  const { token, usuario } = useAuth();
   const [navbarVisible, setNavbarVisible] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [sucursales, setSucursales] = useState<Sucursal[]>([]);
+  const [sucursales, setSucursales] = useState<SucursalPublica[]>([]);
   const [cargandoLista, setCargandoLista] = useState(true);
   const [cargandoProductos, setCargandoProductos] = useState(false);
   const [cargandoEliminar, setCargandoEliminar] = useState(false);
   const [sucursalId, setSucursalId] = useState<string | null>(null);
   const [sucursalNombre, setSucursalNombre] = useState<string>("");
-  const [productos, setProductos] = useState<Producto[]>([]);
+  const [productos, setProductos] = useState<ProductoPublico[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
-  const [productoAEliminar, setProductoAEliminar] = useState<Producto | null>(null);
+  const [productoAEliminar, setProductoAEliminar] = useState<ProductoPublico | null>(null);
 
   useEffect(() => {
     cargarSucursales();
-  }, []);
+  }, [token, usuario?.cafeteria_id]);
 
   const cargarSucursales = async () => {
+    if (!token || !usuario?.cafeteria_id) return;
     setCargandoLista(true);
     try {
-      const datos = await getSucursalesAPI();
-      setSucursales(datos || []);
-    } catch (error) {
+      const { sucursales: datos } = await sucursalesService.listar(token, usuario.cafeteria_id);
+      setSucursales(datos ?? []);
+    } catch {
       Alert.alert("Error", "No se pudieron cargar las sucursales");
     } finally {
       setCargandoLista(false);
@@ -41,38 +43,36 @@ export default function EliminarProductoMenu() {
   };
 
   const seleccionarSucursal = async (id: string, nombre: string) => {
+    if (!token || !usuario?.cafeteria_id) return;
     setSucursalId(id);
     setSucursalNombre(nombre);
     setDropdownOpen(false);
     setCargandoProductos(true);
     try {
-      const datos = await listarProductosAPI(id); // ← todos los productos de la sucursal
-      setProductos((datos || []).filter((p) => p.estado === true));
-    } catch (error) {
+      const { productos: datos } = await productosService.listarPorSucursal(token, usuario.cafeteria_id, id);
+      setProductos((datos ?? []).filter((p) => p.disponible));
+    } catch {
       Alert.alert("Error", "No se pudieron cargar los productos");
     } finally {
       setCargandoProductos(false);
     }
   };
 
-  const abrirModal = (p: Producto) => {
+  const abrirModal = (p: ProductoPublico) => {
     setProductoAEliminar(p);
     setModalVisible(true);
   };
 
   const confirmarEliminar = async () => {
-    if (!productoAEliminar) return;
+    if (!productoAEliminar || !token || !usuario?.cafeteria_id) return;
     setCargandoEliminar(true);
     try {
-      await suspenderProductoAPI(productoAEliminar.id_producto);
-      // Quita el producto de la lista local
-      setProductos((prev) =>
-        prev.filter((p) => p.id_producto !== productoAEliminar.id_producto)
-      );
+      await productosService.suspender(token, usuario.cafeteria_id, productoAEliminar.id);
+      setProductos((prev) => prev.filter((p) => p.id !== productoAEliminar.id));
       setModalVisible(false);
       setProductoAEliminar(null);
-    } catch (error: any) {
-      Alert.alert("Error", error.message || "No se pudo eliminar el producto");
+    } catch (err: any) {
+      Alert.alert("Error", err.message || "No se pudo eliminar el producto");
     } finally {
       setCargandoEliminar(false);
     }
@@ -134,26 +134,18 @@ export default function EliminarProductoMenu() {
               <ActivityIndicator size="large" color="#0D5A52" style={{ marginTop: 20 }} />
             ) : productos.length === 0 ? (
               <Text style={{ color: "#999", textAlign: "center", marginTop: 20 }}>
-                No hay productos en esta sucursal
+                No hay productos activos en esta sucursal
               </Text>
             ) : (
               <View style={styles.grid}>
                 {productos.map((p) => (
-                  <View key={p.id_producto} style={styles.card}>
-                    <Image
-                      source={{ uri: p.imagen_producto || undefined }}
-                      style={styles.cardImage}
-                    />
-                    <TouchableOpacity
-                      style={styles.deleteBtn}
-                      onPress={() => abrirModal(p)}
-                    >
+                  <View key={p.id} style={styles.card}>
+                    <Image source={{ uri: p.imagen_url ?? undefined }} style={styles.cardImage} />
+                    <TouchableOpacity style={styles.deleteBtn} onPress={() => abrirModal(p)}>
                       <Ionicons name="trash-outline" size={18} color="#fff" />
                     </TouchableOpacity>
                     <View style={styles.cardInfo}>
-                      <Text style={styles.cardNombre} numberOfLines={2}>
-                        {p.nom_producto}
-                      </Text>
+                      <Text style={styles.cardNombre} numberOfLines={2}>{p.nombre}</Text>
                       <Text style={styles.cardPrecio}>$ {p.precio?.toFixed(2)}</Text>
                     </View>
                   </View>
@@ -164,14 +156,13 @@ export default function EliminarProductoMenu() {
         )}
       </ScrollView>
 
-      {/* Modal confirmación */}
       <Modal transparent visible={modalVisible} animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>
             <Text style={styles.modalTitle}>¿Está seguro de eliminar este producto?</Text>
             <Text style={styles.modalDesc}>
               Se eliminará el producto{" "}
-              <Text style={styles.modalNombre}>{productoAEliminar?.nom_producto}</Text>
+              <Text style={styles.modalNombre}>{productoAEliminar?.nombre}</Text>
               {" "}y ya no aparecerá para los usuarios.
             </Text>
             <View style={styles.modalBtns}>

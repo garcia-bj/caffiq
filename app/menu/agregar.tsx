@@ -1,23 +1,25 @@
 import React, { useState, useEffect } from "react";
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, SafeAreaView, StatusBar,
+  StyleSheet, StatusBar,
   ScrollView, Modal, Alert, ImageBackground,
   ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { NavbarLateral } from "@/frontend/components/navbar-lateral";
-import { agregarProductoAPI } from "@/frontend/services/menuService";
-import { getSucursalesAPI } from "@/frontend/services/sucursalService";
+import { useAuth } from "@/frontend/context/AuthContext";
+import { sucursalesService, type SucursalPublica } from "@/frontend/services/sucursales.service";
+import { productosService } from "@/frontend/services/productos.service";
 import { subirImagenCloudinary } from "@/frontend/services/cloudinary";
-import { Sucursal } from "@/frontend/types/sucursal";
 
 export default function AgregarProductoMenu() {
+  const { token, usuario } = useAuth();
   const [navbarVisible, setNavbarVisible] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [sucursales, setSucursales] = useState<Sucursal[]>([]);       // ← desde la API
+  const [sucursales, setSucursales] = useState<SucursalPublica[]>([]);
   const [cargandoLista, setCargandoLista] = useState(true);
-  const [sucursalId, setSucursalId] = useState<string | null>(null);  // ← string UUID
+  const [sucursalId, setSucursalId] = useState<string | null>(null);
   const [sucursalNombre, setSucursalNombre] = useState<string>("");
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
@@ -27,24 +29,23 @@ export default function AgregarProductoMenu() {
   const [modalConfirm, setModalConfirm] = useState(false);
   const [cargandoGuardar, setCargandoGuardar] = useState(false);
 
-  // ── Cargar sucursales al iniciar ──────────────────────────
   useEffect(() => {
     cargarSucursales();
-  }, []);
+  }, [token, usuario?.cafeteria_id]);
 
   const cargarSucursales = async () => {
+    if (!token || !usuario?.cafeteria_id) return;
     setCargandoLista(true);
     try {
-      const datos = await getSucursalesAPI(); // ← solo activas
-      setSucursales(datos || []);
-    } catch (error) {
+      const { sucursales: datos } = await sucursalesService.listar(token, usuario.cafeteria_id);
+      setSucursales(datos ?? []);
+    } catch {
       Alert.alert("Error", "No se pudieron cargar las sucursales");
     } finally {
       setCargandoLista(false);
     }
   };
 
-  // ── Seleccionar imagen ────────────────────────────────────
   const seleccionarImagen = async () => {
     const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permiso.granted) {
@@ -60,31 +61,36 @@ export default function AgregarProductoMenu() {
     if (!resultado.canceled) setImagen(resultado.assets[0].uri);
   };
 
-  // ── Validar antes de mostrar modal ────────────────────────
   const intentarRegistrar = () => {
     if (!sucursalId) return Alert.alert("Requerido", "Selecciona una sucursal.");
     if (!nombre.trim()) return Alert.alert("Requerido", "Ingresa el nombre del producto.");
-    if (!precio.trim()) return Alert.alert("Requerido", "Ingresa el precio.");
+    const precioNum = Number(precio);
+    if (!precio.trim() || isNaN(precioNum) || precioNum <= 0) {
+      return Alert.alert("Precio inválido", "El precio debe ser un número mayor a 0.");
+    }
+    if (stock.trim()) {
+      const stockNum = Number(stock);
+      if (isNaN(stockNum) || stockNum < 0 || !Number.isInteger(stockNum)) {
+        return Alert.alert("Stock inválido", "El stock debe ser un número entero igual o mayor a 0.");
+      }
+    }
     setModalConfirm(true);
   };
 
-  // ── Confirmar y guardar ───────────────────────────────────
   const confirmarRegistro = async () => {
-    if (!sucursalId) return;
+    if (!sucursalId || !token || !usuario?.cafeteria_id) return;
     setCargandoGuardar(true);
     setModalConfirm(false);
     try {
       let urlImagen = "";
-      if (imagen) {
-        urlImagen = await subirImagenCloudinary(imagen);
-      }
+      if (imagen) urlImagen = await subirImagenCloudinary(imagen);
 
-      await agregarProductoAPI({
-        id_sucursal: sucursalId,
-        nom_producto: nombre,
-        descripcion: descripcion || undefined,
-        precio,
-        stock: stock || undefined,
+      await productosService.crear(token, usuario.cafeteria_id, {
+        id_sucursal:     sucursalId,
+        nom_producto:    nombre,
+        descripcion:     descripcion || undefined,
+        precio:          Number(precio),
+        stock:           stock ? Number(stock) : undefined,
         imagen_producto: urlImagen || undefined,
       });
 
@@ -157,13 +163,11 @@ export default function AgregarProductoMenu() {
 
         <Text style={styles.sectionTitle}>Datos del Nuevo Producto</Text>
 
-        {/* Nombre */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Nombre del Producto</Text>
           <TextInput style={styles.input} value={nombre} onChangeText={setNombre} />
         </View>
 
-        {/* Descripción */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Descripcion del Producto</Text>
           <TextInput
@@ -173,7 +177,6 @@ export default function AgregarProductoMenu() {
           />
         </View>
 
-        {/* Precio y Stock */}
         <View style={styles.rowGroup}>
           <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
             <Text style={styles.label}>Precio</Text>
@@ -185,7 +188,6 @@ export default function AgregarProductoMenu() {
           </View>
         </View>
 
-        {/* Foto */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Foto del Producto</Text>
           {imagen ? (
@@ -220,7 +222,6 @@ export default function AgregarProductoMenu() {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* Modal confirmación */}
       <Modal transparent visible={modalConfirm} animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>

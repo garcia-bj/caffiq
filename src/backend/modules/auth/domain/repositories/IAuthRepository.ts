@@ -30,4 +30,5 @@ export interface IAuthRepository {
     rol: Rol;
     google_id: string;
   }): Promise<UsuarioEntity>;
+  vincularGoogleId(id: string, google_id: string): Promise<void>;
 }

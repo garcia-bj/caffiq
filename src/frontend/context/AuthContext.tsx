@@ -2,6 +2,17 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { authService, type UsuarioPublico } from "@/frontend/services/auth.service";
 import { storage } from "@/frontend/utils/storage";
 
+function isTokenExpired(token: string): boolean {
+  try {
+    const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const json = atob(base64);
+    const { exp } = JSON.parse(json) as { exp?: number };
+    return typeof exp === "number" && exp * 1000 < Date.now();
+  } catch {
+    return true;
+  }
+}
+
 interface AuthState {
   usuario: UsuarioPublico | null;
   token: string | null;
@@ -11,6 +22,7 @@ interface AuthState {
 
 interface AuthContextValue extends AuthState {
   login: (nom_usuario: string, password: string) => Promise<void>;
+  loginWithGoogle: (rol: "cliente" | "admin") => Promise<void>;
   logout: () => Promise<void>;
   setSession: (token: string, usuario: UsuarioPublico) => Promise<void>;
   setUsuario: (usuario: UsuarioPublico) => void;
@@ -34,7 +46,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const usuario = await storage.getUser<UsuarioPublico>();
 
         if (token && usuario) {
-          setState({ usuario, token, isLoading: false, isAuthenticated: true });
+          if (isTokenExpired(token)) {
+            await storage.clear();
+            setState((s) => ({ ...s, isLoading: false }));
+          } else {
+            setState({ usuario, token, isLoading: false, isAuthenticated: true });
+          }
         } else {
           setState((s) => ({ ...s, isLoading: false }));
         }
@@ -55,6 +72,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await setSession(token, usuario);
   };
 
+  const loginWithGoogle = async (rol: "cliente" | "admin") => {
+    const { token, usuario } = await authService.googleLogin(rol);
+    await setSession(token, usuario);
+  };
+
   const logout = async () => {
     await storage.clear();
     setState({ usuario: null, token: null, isLoading: false, isAuthenticated: false });
@@ -67,7 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ ...state, login, logout, setSession, setUsuario }}>
+    <AuthContext.Provider       value={{ ...state, login, loginWithGoogle, logout, setSession, setUsuario }}>
       {children}
     </AuthContext.Provider>
   );

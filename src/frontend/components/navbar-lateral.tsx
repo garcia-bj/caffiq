@@ -1,15 +1,12 @@
 import React from "react";
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Animated,
-  Dimensions,
-  TouchableWithoutFeedback,
-  ScrollView,
+  View, Text, TouchableOpacity, StyleSheet,
+  Animated, Dimensions, TouchableWithoutFeedback,
+  ScrollView, Alert, Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "@/frontend/context/AuthContext";
 
 const { width } = Dimensions.get("window");
 const DRAWER_WIDTH = width * 0.72;
@@ -22,74 +19,83 @@ interface NavbarLateralProps {
 const MENU_SECTIONS = [
   {
     key: "sucursales",
-    label: "Gestionar sucursales",
+    label: "Sucursales",
+    icon: "location-outline" as const,
     opciones: [
-      { label: "Añadir sucursal",    ruta: "/sucursales/agregar"   },
-      { label: "Modificar sucursal", ruta: "/sucursales/modificar" },
-      { label: "Eliminar sucursal",  ruta: "/sucursales/eliminar"  },
+      { label: "Añadir sucursal",    ruta: "/sucursales/agregar",   icon: "add-circle-outline" as const },
+      { label: "Modificar sucursal", ruta: "/sucursales/modificar", icon: "create-outline" as const },
+      { label: "Eliminar sucursal",  ruta: "/sucursales/eliminar",  icon: "remove-circle-outline" as const },
     ],
   },
-  
   {
     key: "menu",
-    label: "Gestionar Menu",
+    label: "Menú",
+    icon: "cafe-outline" as const,
     opciones: [
-      { label: "Añadir menu",    ruta: "/menu/agregar"   },
-      { label: "Modificar menu", ruta: "/menu/modificar" },
-      { label: "Eliminar menu",  ruta: "/menu/eliminar"  },
+      { label: "Añadir producto",    ruta: "/menu/agregar",   icon: "add-circle-outline" as const },
+      { label: "Modificar producto", ruta: "/menu/modificar", icon: "create-outline" as const },
+      { label: "Eliminar producto",  ruta: "/menu/eliminar",  icon: "remove-circle-outline" as const },
     ],
   },
   {
-    key: "productos",
-    label: "Gestionar Productos",
+    key: "personalizacion",
+    label: "Personalización",
+    icon: "options-outline" as const,
     opciones: [
-      { label: "Añadir producto",    ruta: "/productos/"   },
-      { label: "Modificar producto", ruta: "/productos/" },
-      { label: "Eliminar producto",  ruta: "/productos/"  },
+      { label: "Opciones del producto", ruta: "/personalizacion", icon: "list-outline" as const },
+    ],
+  },
+  {
+    key: "pedidos",
+    label: "Pedidos",
+    icon: "receipt-outline" as const,
+    opciones: [
+      { label: "Gestionar pedidos", ruta: "/pedidos", icon: "clipboard-outline" as const },
+    ],
+  },
+  {
+    key: "configuracion",
+    label: "Configuración",
+    icon: "settings-outline" as const,
+    opciones: [
+      { label: "QR de Pago", ruta: "/configuracion/qr-pago", icon: "qr-code-outline" as const },
     ],
   },
 ];
 
 export function NavbarLateral({ visible, onClose }: NavbarLateralProps) {
-  // ✅ useRouter DENTRO del componente
   const router = useRouter();
+  const { usuario, logout } = useAuth();
+
+  const inicial       = usuario?.nom_completo?.charAt(0).toUpperCase() ?? "A";
+  const nombreMostrar = usuario?.nom_completo ?? "Administrador";
+  const rolMostrar    = usuario?.rol === "admin" ? "Administrador" : "Cliente";
+
+  const handleLogout = () => {
+    const doLogout = async () => {
+      onClose();
+      await logout();
+      router.replace("/(auth)/welcome" as never);
+    };
+    if (Platform.OS === "web") {
+      if (window.confirm("¿Cerrar sesión?")) doLogout();
+    } else {
+      Alert.alert("Cerrar sesión", "¿Estás seguro que deseas salir?", [
+        { text: "Cancelar", style: "cancel" },
+        { text: "Cerrar sesión", style: "destructive", onPress: doLogout },
+      ]);
+    }
+  };
 
   const translateX = React.useRef(new Animated.Value(-DRAWER_WIDTH)).current;
-  const [openSection, setOpenSection] = React.useState<string | null>(null);
-
-  const animatedHeights = React.useRef(
-    Object.fromEntries(MENU_SECTIONS.map((s) => [s.key, new Animated.Value(0)]))
-  ).current;
 
   React.useEffect(() => {
     Animated.timing(translateX, {
       toValue: visible ? 0 : -DRAWER_WIDTH,
-      duration: 280,
+      duration: 260,
       useNativeDriver: true,
     }).start();
   }, [visible]);
-
-  const toggleSection = (key: string) => {
-    const isOpening = openSection !== key;
-
-    if (openSection) {
-      Animated.timing(animatedHeights[openSection], {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: false,
-      }).start();
-    }
-
-    if (isOpening) {
-      Animated.timing(animatedHeights[key], {
-        toValue: 1,
-        duration: 220,
-        useNativeDriver: false,
-      }).start();
-    }
-
-    setOpenSection(isOpening ? key : null);
-  };
 
   if (!visible) return null;
 
@@ -101,61 +107,54 @@ export function NavbarLateral({ visible, onClose }: NavbarLateralProps) {
 
       <Animated.View style={[styles.drawer, { transform: [{ translateX }] }]}>
 
-        {/* Header usuario */}
+        {/* ── Header usuario ── */}
         <View style={styles.drawerHeader}>
           <View style={styles.avatarCircle}>
-            <Text style={styles.avatarIcon}>👤</Text>
+            <Text style={styles.avatarLetter}>{inicial}</Text>
           </View>
-          <Text style={styles.userName}>Nombre de usuario</Text>
-          <Text style={styles.userRole}>Rol del usuario</Text>
+          <Text style={styles.userName} numberOfLines={1}>{nombreMostrar}</Text>
+          <View style={styles.rolRow}>
+            <Ionicons name="storefront-outline" size={12} color="rgba(255,255,255,0.7)" />
+            <Text style={styles.userRole}>{rolMostrar}</Text>
+          </View>
         </View>
 
-        {/* Menú con acordeones */}
+        {/* ── Menú estático ── */}
         <ScrollView style={styles.menuScroll} showsVerticalScrollIndicator={false}>
-          {MENU_SECTIONS.map((section) => {
-            const isOpen = openSection === section.key;
-            const subMenuHeight = animatedHeights[section.key].interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, section.opciones.length * 46],
-            });
-
-            return (
-              <View key={section.key} style={styles.sectionWrapper}>
-                {/* Botón principal */}
-                <TouchableOpacity
-                  style={[styles.menuItem, isOpen && styles.menuItemActive]}
-                  onPress={() => toggleSection(section.key)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.menuText}>{section.label}</Text>
-                  <Text style={styles.chevron}>{isOpen ? "▲" : "▼"}</Text>
-                </TouchableOpacity>
-
-                {/* Subopciones animadas */}
-                <Animated.View
-                  style={[styles.subMenu, { height: subMenuHeight, overflow: "hidden" }]}
-                >
-                  {section.opciones.map((opcion) => (
-                    <TouchableOpacity
-                      key={opcion.label}
-                      style={styles.subMenuItem}
-                      onPress={() => {
-                        router.push(opcion.ruta as any);
-                        onClose();
-                      }}
-                    >
-                      <Text style={styles.subMenuText}>{opcion.label}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </Animated.View>
+          {MENU_SECTIONS.map((section) => (
+            <View key={section.key} style={styles.section}>
+              {/* Etiqueta de sección */}
+              <View style={styles.sectionLabel}>
+                <Ionicons name={section.icon} size={13} color="rgba(255,255,255,0.55)" />
+                <Text style={styles.sectionLabelText}>{section.label.toUpperCase()}</Text>
               </View>
-            );
-          })}
+
+              {/* Opciones directas */}
+              {section.opciones.map((opcion) => (
+                <TouchableOpacity
+                  key={opcion.label}
+                  style={styles.menuItem}
+                  onPress={() => { router.push(opcion.ruta as any); onClose(); }}
+                  activeOpacity={0.75}
+                >
+                  <View style={styles.menuItemIcon}>
+                    <Ionicons name={opcion.icon} size={16} color="rgba(255,255,255,0.85)" />
+                  </View>
+                  <Text style={styles.menuText}>{opcion.label}</Text>
+                  <Ionicons name="chevron-forward" size={14} color="rgba(255,255,255,0.3)" />
+                </TouchableOpacity>
+              ))}
+            </View>
+          ))}
+          <View style={{ height: 16 }} />
         </ScrollView>
 
-        {/* Cerrar sesión */}
-        <TouchableOpacity style={styles.logoutBtn}>
-          <Text style={styles.logoutText}>🚪 Cerrar sesión</Text>
+        {/* ── Cerrar sesión ── */}
+        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
+          <View style={styles.logoutIconWrap}>
+            <Ionicons name="log-out-outline" size={17} color="#FFCDD2" />
+          </View>
+          <Text style={styles.logoutText}>Cerrar sesión</Text>
         </TouchableOpacity>
       </Animated.View>
     </View>
@@ -164,81 +163,74 @@ export function NavbarLateral({ visible, onClose }: NavbarLateralProps) {
 
 const styles = StyleSheet.create({
   overlay: {
-    position: "absolute",
-    top: 0, left: 0, right: 0, bottom: 0,
-    zIndex: 999,
-    flexDirection: "row",
+    position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
+    zIndex: 999, flexDirection: "row",
   },
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.45)",
-  },
+  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)" },
   drawer: {
-    position: "absolute",
-    top: 0, left: 0, bottom: 0,
+    position: "absolute", top: 0, left: 0, bottom: 0,
     width: DRAWER_WIDTH,
-    backgroundColor: "#6FA58B",
-    paddingTop: 60,
-    paddingHorizontal: 20,
-    paddingBottom: 40,
+    backgroundColor: "#0D5A52",
+    paddingTop: 56, paddingBottom: 0,
     shadowColor: "#000",
     shadowOffset: { width: 4, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 20,
+    shadowOpacity: 0.35, shadowRadius: 16, elevation: 24,
   },
+
+  /* ── Header ── */
   drawerHeader: {
-    alignItems: "center",
-    paddingBottom: 24,
+    alignItems: "center", paddingHorizontal: 20, paddingBottom: 20,
+    borderBottomWidth: 1, borderBottomColor: "rgba(255,255,255,0.12)",
     marginBottom: 8,
   },
   avatarCircle: {
-    width: 72, height: 72, borderRadius: 36,
-    backgroundColor: "#FFFFFF",
+    width: 64, height: 64, borderRadius: 32,
+    backgroundColor: "#6FA58B",
     alignItems: "center", justifyContent: "center",
-    marginBottom: 12, elevation: 4,
+    marginBottom: 10,
   },
-  avatarIcon: { fontSize: 36 },
-  userName: { fontSize: 17, fontWeight: "700", color: "#FFFFFF", marginBottom: 4 },
-  userRole: { fontSize: 13, color: "rgba(255,255,255,0.75)" },
-  menuScroll: { flex: 1 },
-  sectionWrapper: { marginBottom: 8 },
+  avatarLetter: { fontSize: 26, fontWeight: "800", color: "#fff" },
+  userName:     { fontSize: 15, fontWeight: "700", color: "#fff", marginBottom: 4, textAlign: "center" },
+  rolRow:       { flexDirection: "row", alignItems: "center", gap: 4 },
+  userRole:     { fontSize: 11, color: "rgba(255,255,255,0.65)" },
+
+  /* ── Menu ── */
+  menuScroll: { flex: 1, paddingHorizontal: 12 },
+
+  section: { marginBottom: 4 },
+  sectionLabel: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    paddingHorizontal: 8, paddingTop: 14, paddingBottom: 6,
+  },
+  sectionLabelText: {
+    fontSize: 9, fontWeight: "800", color: "rgba(255,255,255,0.45)",
+    letterSpacing: 1.4,
+  },
+
   menuItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#0D5A52",
-    paddingVertical: 13,
-    paddingHorizontal: 16,
-    borderRadius: 10,
+    flexDirection: "row", alignItems: "center", gap: 10,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: 10, paddingVertical: 11, paddingHorizontal: 12,
+    marginBottom: 3,
   },
-  menuItemActive: {
-    backgroundColor: "#0a4840",
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
+  menuItemIcon: {
+    width: 30, height: 30, borderRadius: 8,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    alignItems: "center", justifyContent: "center",
+    flexShrink: 0,
   },
-  menuText: { fontSize: 14, color: "#FFFFFF", fontWeight: "600" },
-  chevron: { fontSize: 11, color: "#FFFFFF" },
-  subMenu: {
-    backgroundColor: "#0D5A52",
-    borderBottomLeftRadius: 10,
-    borderBottomRightRadius: 10,
-    paddingHorizontal: 8,
-  },
-  subMenuItem: {
-    height: 46,
-    justifyContent: "center",
-    paddingHorizontal: 16,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.12)",
-  },
-  subMenuText: { fontSize: 13, color: "rgba(255,255,255,0.9)", fontWeight: "400" },
+  menuText: { flex: 1, fontSize: 13, color: "#fff", fontWeight: "600" },
+
+  /* ── Logout ── */
   logoutBtn: {
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(255,255,255,0.3)",
-    marginTop: 8,
+    flexDirection: "row", alignItems: "center", gap: 10,
+    paddingVertical: 16, paddingHorizontal: 20,
+    borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.12)",
   },
-  logoutText: { fontSize: 15, color: "#FFFFFF", fontWeight: "600" },
+  logoutIconWrap: {
+    width: 32, height: 32, borderRadius: 8,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    alignItems: "center", justifyContent: "center",
+  },
+  logoutText: { fontSize: 14, color: "#FFCDD2", fontWeight: "700" },
 });

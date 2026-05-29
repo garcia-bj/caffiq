@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import {
   View, Text, StyleSheet, FlatList, TextInput,
   TouchableOpacity, ActivityIndicator, RefreshControl,
-  Pressable, ScrollView, Dimensions, Animated,
+  Pressable, ScrollView, Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -10,380 +10,320 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/frontend/context/AuthContext";
 import { cafeteriasService, type CafeteriaPublica } from "@/frontend/services/cafeterias.service";
 
-const { width: SCREEN_W } = Dimensions.get("window");
-const CARD_W = SCREEN_W - 48;
+const { width: SW } = Dimensions.get("window");
 
 const D = {
-  bg:               "#091A17",
-  card:             "#112820",
-  cardBorder:       "#1A3A2C",
-  primary:          "#FFFFFF",
-  secondary:        "#8BA89A",
-  label:            "#4A8A72",
-  accentText:       "#4CAF84",
-  chipActive:       "#1A7A58",
-  chip:             "#162E26",
-  chipTextInactive: "#8BA89A",
-  searchBg:         "#122820",
-  openBg:           "#0D2E1E",
-  openText:         "#4DC384",
-  closeSoonBg:      "#3A1D00",
-  closeSoonText:    "#FF9500",
-  heroBg:           "#1A3020",
-  heroCard1:        "#2A1A1A",
-  heroCard2:        "#1A2A20",
+  bg:      "#EDF7F4",
+  card:    "#ffffff",
+  border:  "#C8DDD7",
+  primary: "#2C1819",
+  sage:    "#6FA58B",
+  teal:    "#0D5A52",
+  dark:    "#2C1819",
+  gold:    "#C9A84C",
+  surface: "#D4EDE6",
 } as const;
 
-const CATEGORIAS = ["Todos", "Espresso", "Cold Brew", "Especialidad", "Vegan"];
-const ICON_COLORS = ["#1A3D2A", "#3D1A1A", "#1A1A3D", "#3D3D1A", "#2A1A3D", "#1A3A2A"];
-const CATEGORY_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
-  "Todos": "cafe-outline",
-  "Espresso": "flash-outline",
-  "Cold Brew": "snow-outline",
-  "Especialidad": "star-outline",
-  "Vegan": "leaf-outline",
+const CARD_COLORS = ["#0D5A52", "#2C1819", "#1A3A5C", "#3D2219", "#1A4A3A", "#2C1A3D"];
+const CATS = ["Todos", "Espresso", "Cold Brew", "Especialidad", "Vegan"];
+const CAT_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  Todos: "cafe-outline", Espresso: "flash-outline",
+  "Cold Brew": "snow-outline", Especialidad: "star-outline", Vegan: "leaf-outline",
 };
 
-type EstadoApertura = "abierto" | "cierra-pronto" | "cerrado";
+function greeting() {
+  const h = new Date().getHours();
+  return h < 12 ? "Buenos días" : h < 18 ? "Buenas tardes" : "Buenas noches";
+}
 
-function calcularEstado(ap: string | null, ci: string | null): EstadoApertura {
-  if (!ap || !ci) return "cerrado";
-  const now = new Date();
-  const mins = now.getHours() * 60 + now.getMinutes();
+function rating(id: string) {
+  return (4.2 + (id.charCodeAt(0) % 10) * 0.08).toFixed(1);
+}
+
+function estadoCalc(ap: string | null, ci: string | null) {
+  if (!ap || !ci) return "cerrado" as const;
+  const m = new Date().getHours() * 60 + new Date().getMinutes();
   const [hA, mA] = ap.split(":").map(Number);
   const [hC, mC] = ci.split(":").map(Number);
-  const mAp = hA * 60 + mA;
-  const mCi = hC * 60 + mC;
-  if (mins < mAp || mins >= mCi) return "cerrado";
-  if (mCi - mins <= 30) return "cierra-pronto";
-  return "abierto";
+  const open = hA * 60 + mA, close = hC * 60 + mC;
+  if (m < open || m >= close) return "cerrado" as const;
+  return close - m <= 30 ? "cierra-pronto" as const : "abierto" as const;
 }
 
-function getGreeting() {
-  const h = new Date().getHours();
-  if (h < 12) return "Buenos días";
-  if (h < 18) return "Buenas tardes";
-  return "Buenas noches";
-}
-
-/* ─── Rating simulado ────────────────────────────────────────────── */
-function getRating(id: string): string {
-  const n = id.charCodeAt(0) % 10;
-  return (4.2 + (n * 0.08)).toFixed(1);
-}
-
-/* ─── Badge estado ───────────────────────────────────────────────── */
-function EstadoBadge({ estado }: { estado: EstadoApertura }) {
-  if (estado === "cerrado") return null;
-  const bg    = estado === "abierto" ? D.openBg       : D.closeSoonBg;
-  const color = estado === "abierto" ? D.openText     : D.closeSoonText;
-  const label = estado === "abierto" ? "Abierto"      : "Cierra pronto";
+/* ── Featured carousel card ─────────────────────────── */
+function FeaturedCard({ item, index, onPress }: { item: CafeteriaPublica; index: number; onPress: () => void }) {
+  const bg = CARD_COLORS[index % CARD_COLORS.length];
+  const r  = rating(item.id);
   return (
-    <View style={[styles.badge, { backgroundColor: bg }]}>
-      <Text style={[styles.badgeText, { color }]}>{label}</Text>
-    </View>
-  );
-}
+    <Pressable style={[styles.featCard, { backgroundColor: bg }]} onPress={onPress} android_ripple={{ color: "#ffffff18" }}>
+      {/* Decorative blobs */}
+      <View style={[styles.blob, { width: 160, height: 160, top: -50, right: -30, opacity: 0.07 }]} />
+      <View style={[styles.blob, { width: 90,  height: 90,  bottom: -20, left: -20, opacity: 0.05 }]} />
 
-/* ─── Icono inicial de cafetería ─────────────────────────────────── */
-function CafeIcon({ name, index, size = 48 }: { name: string; index: number; size?: number }) {
-  const bg      = ICON_COLORS[index % ICON_COLORS.length];
-  const initial = name.charAt(0).toUpperCase();
-  return (
-    <View style={[styles.cafeIcon, { backgroundColor: bg, width: size, height: size, borderRadius: size * 0.27 }]}>
-      <Text style={[styles.cafeInitial, { fontSize: size * 0.4 }]}>{initial}</Text>
-    </View>
-  );
-}
-
-/* ─── Tarjeta destacada (hero carousel) ──────────────────────────── */
-function HeroCard({ item, index, onPress }: { item: CafeteriaPublica; index: number; onPress: () => void }) {
-  const rating = getRating(item.id);
-  const tags = ["Espresso", "Pastelería"];
-  return (
-    <Pressable style={styles.heroCard} onPress={onPress} android_ripple={{ color: "#ffffff10" }}>
-      {/* Fondo degradado simulado */}
-      <View style={[styles.heroBg, { backgroundColor: ICON_COLORS[index % ICON_COLORS.length] + "CC" }]} />
-      <View style={styles.heroContent}>
-        <View style={styles.heroLeft}>
-          <View style={styles.heroDestBadge}>
-            <Text style={styles.heroDestText}>★ DESTACADO</Text>
-          </View>
-          <Text style={styles.heroName} numberOfLines={2}>{item.nom_cafeteria}</Text>
-          <View style={styles.heroMeta}>
-            <Text style={styles.heroRating}>★ {rating}</Text>
-            <View style={styles.heroDivider} />
-            {tags.map((t) => (
-              <View key={t} style={styles.heroTag}>
-                <Text style={styles.heroTagText}>{t}</Text>
-              </View>
-            ))}
-          </View>
+      {/* Top row */}
+      <View style={styles.featTop}>
+        <View style={styles.featBadge}>
+          <Ionicons name="star" size={9} color={D.gold} />
+          <Text style={styles.featBadgeText}>DESTACADO</Text>
         </View>
-        <View style={styles.heroRight}>
-          <View style={styles.heroAvatarWrap}>
-            <CafeIcon name={item.nom_cafeteria} index={index + 2} size={80} />
-          </View>
-          <TouchableOpacity style={styles.heroArrow} onPress={onPress}>
-            <Ionicons name="arrow-forward" size={16} color={D.primary} />
-          </TouchableOpacity>
+        <View style={styles.featRating}>
+          <Ionicons name="star" size={10} color={D.gold} />
+          <Text style={styles.featRatingText}>{r}</Text>
         </View>
+      </View>
+
+      {/* Bottom info */}
+      <View style={styles.featBottom}>
+        <Text style={styles.featName} numberOfLines={1}>{item.nom_cafeteria}</Text>
+        <View style={styles.featCityRow}>
+          <Ionicons name="location-outline" size={11} color="rgba(255,255,255,0.6)" />
+          <Text style={styles.featCity}>{item.ciudad}</Text>
+        </View>
+        <TouchableOpacity style={styles.featBtn} onPress={onPress} activeOpacity={0.85}>
+          <Text style={styles.featBtnText}>Ver menú</Text>
+          <Ionicons name="arrow-forward" size={12} color={bg} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Big initial */}
+      <View style={[styles.featInitialWrap, { backgroundColor: "rgba(255,255,255,0.1)" }]}>
+        <Text style={styles.featInitialText}>{item.nom_cafeteria.charAt(0).toUpperCase()}</Text>
       </View>
     </Pressable>
   );
 }
 
-/* ─── Indicadores del carrusel ───────────────────────────────────── */
-function CarouselDots({ total, active }: { total: number; active: number }) {
-  return (
-    <View style={styles.dotsRow}>
-      {Array.from({ length: total }).map((_, i) => (
-        <View
-          key={i}
-          style={[
-            styles.dot,
-            i === active ? styles.dotActive : styles.dotInactive,
-          ]}
-        />
-      ))}
-    </View>
-  );
-}
-
-/* ─── Item de lista ──────────────────────────────────────────────── */
-function CafeteriaItem({ item, index }: { item: CafeteriaPublica; index: number }) {
-  const estado  = calcularEstado(item.horario_apertura ?? null, item.horario_cierre ?? null);
-  const rating  = getRating(item.id);
+/* ── Cafeteria list card ─────────────────────────────── */
+function CafeCard({ item, index }: { item: CafeteriaPublica; index: number }) {
+  const r    = rating(item.id);
+  const est  = estadoCalc((item as any).horario_apertura ?? null, (item as any).horario_cierre ?? null);
+  const bg   = CARD_COLORS[index % CARD_COLORS.length];
+  const isOpen = est === "abierto";
+  const isWarn = est === "cierra-pronto";
 
   return (
     <Pressable
-      style={styles.listItem}
-      onPress={() =>
-        router.push({
-          pathname: "/cafeteria/[id]" as never,
-          params: { id: item.id, nom_cafeteria: item.nom_cafeteria },
-        })
-      }
+      style={styles.cafeCard}
+      onPress={() => router.push({ pathname: "/cafeteria/[id]" as never, params: { id: item.id, nom_cafeteria: item.nom_cafeteria } })}
+      android_ripple={{ color: D.surface }}
     >
-      <CafeIcon name={item.nom_cafeteria} index={index} size={52} />
-      <View style={styles.listInfo}>
-        <View style={styles.listTopRow}>
-          <Text style={styles.listName} numberOfLines={1}>{item.nom_cafeteria}</Text>
-          <View style={styles.listRating}>
-            <Ionicons name="star" size={11} color="#FFD700" />
-            <Text style={styles.listRatingText}>{rating}</Text>
+      {/* Colored top band */}
+      <View style={[styles.cafeCardTop, { backgroundColor: bg }]}>
+        <View style={styles.cafeCardInitialWrap}>
+          <Text style={styles.cafeCardInitial}>{item.nom_cafeteria.charAt(0).toUpperCase()}</Text>
+        </View>
+        <View style={styles.cafeCardTopInfo}>
+          <Text style={styles.cafeCardName} numberOfLines={1}>{item.nom_cafeteria}</Text>
+          <View style={styles.ratingRow}>
+            <Ionicons name="star" size={11} color={D.gold} />
+            <Text style={styles.ratingText}>{r}</Text>
           </View>
         </View>
-        <Text style={styles.listCity} numberOfLines={1}>{item.descripcion || item.ciudad}</Text>
-        <View style={styles.listTagsRow}>
-          <View style={styles.listTag}><Text style={styles.listTagText}>Espresso</Text></View>
-          <View style={styles.listTag}><Text style={styles.listTagText}>Pastelería</Text></View>
-          <EstadoBadge estado={estado} />
+        <Ionicons name="chevron-forward" size={15} color="rgba(255,255,255,0.5)" style={{ marginLeft: "auto" }} />
+      </View>
+
+      {/* White bottom band */}
+      <View style={styles.cafeCardBottom}>
+        <View style={styles.cafeCardBottomRow}>
+          <Ionicons name="location-outline" size={12} color={D.sage} />
+          <Text style={styles.cafeCardCity} numberOfLines={1}>{item.descripcion || item.ciudad}</Text>
+        </View>
+        <View style={styles.cafeCardTags}>
+          <View style={styles.tag}><Text style={styles.tagTxt}>Cafetería</Text></View>
+          {(isOpen || isWarn) && (
+            <View style={[styles.estadoTag, { backgroundColor: isOpen ? "#C0DDD5" : "#FDE68A40", borderColor: isOpen ? D.teal : "#B45309" }]}>
+              <View style={[styles.estadoDot, { backgroundColor: isOpen ? D.teal : "#B45309" }]} />
+              <Text style={[styles.estadoTxt, { color: isOpen ? D.teal : "#B45309" }]}>
+                {isOpen ? "Abierto" : "Cierra pronto"}
+              </Text>
+            </View>
+          )}
         </View>
       </View>
-      <Ionicons name="chevron-forward" size={16} color={D.label} />
     </Pressable>
   );
 }
 
-/* ─── Screen principal ───────────────────────────────────────────── */
+/* ── Main screen ─────────────────────────────────────── */
 export default function HomeScreen() {
   const { token, usuario } = useAuth();
   const [cafeterias, setCafeterias] = useState<CafeteriaPublica[]>([]);
-  const [filtered, setFiltered]     = useState<CafeteriaPublica[]>([]);
-  const [loading, setLoading]       = useState(true);
+  const [filtered,   setFiltered]   = useState<CafeteriaPublica[]>([]);
+  const [loading,    setLoading]    = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [search, setSearch]         = useState("");
-  const [catActiva, setCatActiva]   = useState("Todos");
-  const [heroIdx, setHeroIdx]       = useState(0);
+  const [search,     setSearch]     = useState("");
+  const [cat,        setCat]        = useState("Todos");
+  const [featIdx,    setFeatIdx]    = useState(0);
+  const featRef = useRef<ScrollView>(null);
+  const featData = cafeterias.slice(0, 5);
+  const FEAT_W   = SW - 40;
 
-  const heroRef  = useRef<ScrollView>(null);
-  const heroData = cafeterias.slice(0, 4);
-
-  // Admin → redirigir
   useEffect(() => {
-    if (usuario?.rol === "admin") {
-      router.replace("/(tabs)/cafeterias" as never);
-    }
+    if (usuario?.rol === "admin") router.replace("/(tabs)/cafeterias" as never);
   }, [usuario]);
 
   const cargar = useCallback(async () => {
     if (!token) return;
     try {
-      const { cafeterias: data } = await cafeteriasService.listar(token);
-      setCafeterias(data);
-      setFiltered(data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+      const { cafeterias: d } = await cafeteriasService.listar(token);
+      setCafeterias(d); setFiltered(d);
+    } catch {}
+    finally { setLoading(false); setRefreshing(false); }
   }, [token]);
 
   useEffect(() => { cargar(); }, [cargar]);
-
   useEffect(() => {
     const q = search.toLowerCase();
-    setFiltered(
-      q ? cafeterias.filter(c =>
-        c.nom_cafeteria.toLowerCase().includes(q) ||
-        c.ciudad.toLowerCase().includes(q)
-      ) : cafeterias
-    );
+    setFiltered(q ? cafeterias.filter(c => c.nom_cafeteria.toLowerCase().includes(q) || c.ciudad.toLowerCase().includes(q)) : cafeterias);
   }, [search, cafeterias]);
 
-  const handleHeroScroll = (e: any) => {
-    const idx = Math.round(e.nativeEvent.contentOffset.x / CARD_W);
-    setHeroIdx(idx);
-  };
+  const nombre  = usuario?.nom_completo?.split(" ")[0] ?? "Usuario";
+  const inicial = nombre.charAt(0).toUpperCase();
 
-  /* ── Header del FlatList ────────────────────────────────────────── */
   const Header = (
     <View>
-      {/* Saludo */}
-      <View style={styles.greetRow}>
-        <View>
-          <Text style={styles.greetLabel}>{getGreeting()}</Text>
-          <Text style={styles.greetTitle}>Descubre tu café</Text>
-        </View>
-        <View style={styles.greetActions}>
-          <TouchableOpacity style={styles.iconBtn} onPress={() => router.push("/(tabs)/buscar" as never)}>
-            <Ionicons name="grid-outline" size={18} color={D.primary} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn}>
-            <Ionicons name="notifications-outline" size={18} color={D.primary} />
-          </TouchableOpacity>
-        </View>
-      </View>
+      {/* ════════ HEADER (teal) ════════ */}
+      <View style={styles.header}>
+        {/* Decoración */}
+        <View style={[styles.blob, { width: 220, height: 220, top: -80, right: -60, backgroundColor: "rgba(255,255,255,0.04)" }]} />
+        <View style={[styles.blob, { width: 100, height: 100, bottom: 10, left: -30, backgroundColor: "rgba(255,255,255,0.03)" }]} />
 
-      {/* Búsqueda */}
-      <View style={styles.searchRow}>
-        <View style={styles.searchBox}>
-          <Ionicons name="search-outline" size={16} color={D.secondary} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Buscar cafeterías..."
-            placeholderTextColor={D.secondary}
-            value={search}
-            onChangeText={setSearch}
-          />
-          {search ? (
-            <TouchableOpacity onPress={() => setSearch("")}>
-              <Ionicons name="close-circle" size={16} color={D.secondary} />
-            </TouchableOpacity>
-          ) : null}
-        </View>
-        <TouchableOpacity style={styles.filterBtn}>
-          <Text style={styles.filterText}>Filtrar</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* ── Sección DESTACADOS ─────────────────────────────────────── */}
-      {heroData.length > 0 && !search && (
-        <View style={styles.sectionBlock}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>DESTACADOS</Text>
-            <CarouselDots total={heroData.length} active={heroIdx} />
+        {/* Top row */}
+        <View style={styles.headerRow}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{inicial}</Text>
           </View>
-
-          <ScrollView
-            ref={heroRef}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onScroll={handleHeroScroll}
-            scrollEventThrottle={16}
-            decelerationRate="fast"
-            snapToInterval={CARD_W + 16}
-            contentContainerStyle={{ paddingHorizontal: 16, gap: 16 }}
-          >
-            {heroData.map((item, i) => (
-              <HeroCard
-                key={item.id}
-                item={item}
-                index={i}
-                onPress={() =>
-                  router.push({
-                    pathname: "/cafeteria/[id]" as never,
-                    params: { id: item.id, nom_cafeteria: item.nom_cafeteria },
-                  })
-                }
-              />
-            ))}
-          </ScrollView>
+          <View style={styles.headerGreet}>
+            <Text style={styles.headerGreetSub}>{greeting()}</Text>
+            <Text style={styles.headerGreetName}>{nombre}</Text>
+          </View>
+          <TouchableOpacity style={styles.headerBtn} onPress={() => router.push("/(tabs)/mis-pedidos" as never)}>
+            <Ionicons name="receipt-outline" size={18} color="#fff" />
+          </TouchableOpacity>
         </View>
-      )}
 
-      {/* ── Chips de categoría ─────────────────────────────────────── */}
-      {!search && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipsRow}
-        >
-          {CATEGORIAS.map((cat) => {
-            const active = catActiva === cat;
-            return (
-              <TouchableOpacity
-                key={cat}
-                style={[styles.chip, active && styles.chipActive]}
-                onPress={() => setCatActiva(cat)}
-              >
-                <Ionicons
-                  name={CATEGORY_ICONS[cat] ?? "cafe-outline"}
-                  size={13}
-                  color={active ? D.primary : D.chipTextInactive}
-                />
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>{cat}</Text>
+        {/* Big title */}
+        <Text style={styles.headerTitle}>¿Qué café{"\n"}buscas hoy?</Text>
+
+        {/* Search bar */}
+        <View style={styles.searchWrap}>
+          <View style={styles.searchBox}>
+            <Ionicons name="search-outline" size={16} color={D.sage} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Buscar cafeterías..."
+              placeholderTextColor="#9DBDB4"
+              value={search}
+              onChangeText={setSearch}
+            />
+            {search ? (
+              <TouchableOpacity onPress={() => setSearch("")}>
+                <Ionicons name="close-circle" size={15} color={D.sage} />
               </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      )}
+            ) : null}
+          </View>
+        </View>
+      </View>
 
-      {/* ── Encabezado sección lista ───────────────────────────────── */}
-      <View style={styles.nearHeader}>
-        <Text style={styles.nearTitle}>CERCA DE TI</Text>
-        <TouchableOpacity>
-          <Text style={styles.nearLink}>Ver mapa →</Text>
-        </TouchableOpacity>
+      {/* ════════ BODY ════════ */}
+      <View style={styles.body}>
+
+        {/* ── Destacados carousel ── */}
+        {featData.length > 0 && !search && (
+          <View style={styles.section}>
+            <View style={styles.sectionRow}>
+              <Text style={styles.sectionLabel}>DESTACADOS</Text>
+              <View style={styles.dotsRow}>
+                {featData.map((_, i) => (
+                  <View key={i} style={[styles.dot, i === featIdx ? styles.dotOn : styles.dotOff]} />
+                ))}
+              </View>
+            </View>
+            <ScrollView
+              ref={featRef}
+              horizontal pagingEnabled showsHorizontalScrollIndicator={false}
+              onScroll={e => setFeatIdx(Math.round(e.nativeEvent.contentOffset.x / FEAT_W))}
+              scrollEventThrottle={16}
+              decelerationRate="fast"
+              snapToInterval={FEAT_W}
+              contentContainerStyle={{ paddingHorizontal: 20, gap: 0 }}
+            >
+              {featData.map((item, i) => (
+                <View key={item.id} style={{ width: FEAT_W, paddingRight: i < featData.length - 1 ? 12 : 0 }}>
+                  <FeaturedCard
+                    item={item} index={i}
+                    onPress={() => router.push({ pathname: "/cafeteria/[id]" as never, params: { id: item.id, nom_cafeteria: item.nom_cafeteria } })}
+                  />
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* ── Categorías ── */}
+        {!search && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catsRow}>
+            {CATS.map(c => {
+              const on = cat === c;
+              return (
+                <TouchableOpacity key={c} style={[styles.chip, on && styles.chipOn]} onPress={() => setCat(c)}>
+                  <Ionicons name={CAT_ICONS[c] ?? "cafe-outline"} size={13} color={on ? "#fff" : D.sage} />
+                  <Text style={[styles.chipTxt, on && styles.chipTxtOn]}>{c}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
+
+        {/* ── Section header lista ── */}
+        <View style={styles.listHead}>
+          <Text style={styles.sectionLabel}>
+            {search ? `RESULTADOS  "${search.toUpperCase()}"` : "CAFETERÍAS"}
+          </Text>
+          {!search && (
+            <View style={styles.countBadge}>
+              <Text style={styles.countBadgeTxt}>{filtered.length}</Text>
+            </View>
+          )}
+        </View>
       </View>
     </View>
   );
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safe} edges={["top"]}>
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={D.accentText} />
+      <SafeAreaView style={[styles.safe, { backgroundColor: D.teal }]} edges={["top"]}>
+        <View style={[styles.center, { backgroundColor: D.bg }]}>
+          <ActivityIndicator size="large" color={D.teal} />
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={["top"]}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: D.teal }]} edges={["top"]}>
       <FlatList
+        style={{ backgroundColor: D.teal }}
         data={filtered}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item, index }) => <CafeteriaItem item={item} index={index} />}
+        keyExtractor={item => item.id}
+        renderItem={({ item, index }) => (
+          <View style={styles.cardWrap}>
+            <CafeCard item={item} index={index} />
+          </View>
+        )}
         ListHeaderComponent={Header}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => { setRefreshing(true); cargar(); }}
-            tintColor={D.accentText}
-          />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); cargar(); }} tintColor={D.teal} />}
         ListEmptyComponent={
-          <View style={styles.empty}>
-            <Ionicons name="cafe-outline" size={48} color={D.secondary} />
-            <Text style={styles.emptyText}>
-              {search ? "Sin resultados para tu búsqueda" : "No hay cafeterías disponibles"}
-            </Text>
+          <View style={styles.emptyWrap}>
+            <View style={styles.empty}>
+              <View style={styles.emptyIcon}>
+                <Ionicons name="cafe-outline" size={36} color={D.sage} />
+              </View>
+              <Text style={styles.emptyTitle}>{search ? "Sin resultados" : "Sin cafeterías"}</Text>
+              <Text style={styles.emptySub}>{search ? "Prueba con otro término" : "No hay cafeterías disponibles"}</Text>
+            </View>
           </View>
         }
       />
@@ -392,85 +332,172 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe:        { flex: 1, backgroundColor: D.bg },
-  center:      { flex: 1, alignItems: "center", justifyContent: "center" },
-  listContent: { paddingBottom: 100 },
+  safe:    { flex: 1 },
+  center:  { flex: 1, alignItems: "center", justifyContent: "center" },
 
-  /* ─── Saludo ──────────────────────────────────────────────────── */
-  greetRow:    { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, paddingTop: 20, paddingBottom: 14 },
-  greetLabel:  { fontSize: 12, color: D.secondary, fontWeight: "600", letterSpacing: 0.8, textTransform: "uppercase", marginBottom: 2 },
-  greetTitle:  { fontSize: 26, fontWeight: "800", color: D.primary },
-  greetActions:{ flexDirection: "row", gap: 8 },
-  iconBtn:     { width: 38, height: 38, borderRadius: 12, backgroundColor: D.card, borderWidth: 1, borderColor: D.cardBorder, alignItems: "center", justifyContent: "center" },
+  /* ── Shared blob shape ── */
+  blob: { position: "absolute", borderRadius: 999 },
 
-  /* ─── Búsqueda ────────────────────────────────────────────────── */
-  searchRow:   { flexDirection: "row", paddingHorizontal: 16, marginBottom: 16, gap: 10, alignItems: "center" },
-  searchBox:   { flex: 1, flexDirection: "row", alignItems: "center", backgroundColor: D.searchBg, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, gap: 8, borderWidth: 1, borderColor: D.cardBorder },
-  searchInput: { flex: 1, fontSize: 14, color: D.primary },
-  filterBtn:   { backgroundColor: D.chipActive, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10 },
-  filterText:  { color: D.primary, fontWeight: "700", fontSize: 13 },
+  /* ── Header ── */
+  header: {
+    backgroundColor: D.teal,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 24,
+    overflow: "hidden",
+  },
+  headerRow:      { flexDirection: "row", alignItems: "center", marginBottom: 20 },
+  avatar: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: D.sage, alignItems: "center", justifyContent: "center",
+  },
+  avatarText:     { fontSize: 16, fontWeight: "800", color: "#fff" },
+  headerGreet:    { flex: 1, marginLeft: 10 },
+  headerGreetSub: { fontSize: 11, color: "rgba(255,255,255,0.6)", fontWeight: "600" },
+  headerGreetName:{ fontSize: 15, fontWeight: "800", color: "#fff" },
+  headerBtn: {
+    width: 40, height: 40, borderRadius: 12,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    alignItems: "center", justifyContent: "center",
+  },
+  headerTitle: {
+    fontSize: 32, fontWeight: "900", color: "#fff",
+    lineHeight: 38, letterSpacing: -0.5,
+    marginBottom: 0,
+  },
 
-  /* ─── Sección ─────────────────────────────────────────────────── */
-  sectionBlock:  { marginBottom: 6 },
-  sectionHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 12 },
-  sectionTitle:  { fontSize: 11, fontWeight: "800", color: D.label, letterSpacing: 1.5 },
+  searchWrap: { marginTop: 20 },
+  searchBox: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    paddingHorizontal: 16, paddingVertical: 14,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15, shadowRadius: 12, elevation: 8,
+  },
+  searchInput: { flex: 1, fontSize: 14, color: D.primary, fontWeight: "500" },
 
-  /* ─── Dots ────────────────────────────────────────────────────── */
-  dotsRow:     { flexDirection: "row", gap: 6, alignItems: "center" },
-  dot:         { height: 6, borderRadius: 3 },
-  dotActive:   { width: 18, backgroundColor: D.accentText },
-  dotInactive: { width: 6, backgroundColor: D.cardBorder },
+  /* ── Body ── */
+  body: {
+    backgroundColor: D.bg,
+    paddingTop: 20,
+  },
 
-  /* ─── Hero card ───────────────────────────────────────────────── */
-  heroCard:     { width: CARD_W, borderRadius: 20, overflow: "hidden", backgroundColor: D.heroBg, borderWidth: 1, borderColor: D.cardBorder, minHeight: 180 },
-  heroBg:       { ...StyleSheet.absoluteFillObject, opacity: 0.5 },
-  heroContent:  { flexDirection: "row", padding: 20, gap: 16, flex: 1 },
-  heroLeft:     { flex: 1, justifyContent: "flex-end" },
-  heroRight:    { alignItems: "flex-end", justifyContent: "space-between" },
-  heroDestBadge:{ backgroundColor: "rgba(76,175,132,0.2)", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, alignSelf: "flex-start", marginBottom: 8, borderWidth: 1, borderColor: "#4CAF8450" },
-  heroDestText: { fontSize: 10, color: D.accentText, fontWeight: "800", letterSpacing: 0.8 },
-  heroName:     { fontSize: 22, fontWeight: "800", color: D.primary, marginBottom: 10, lineHeight: 28 },
-  heroMeta:     { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
-  heroRating:   { fontSize: 13, color: "#FFD700", fontWeight: "700" },
-  heroDivider:  { width: 1, height: 14, backgroundColor: D.cardBorder },
-  heroTag:      { backgroundColor: D.chip, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: D.cardBorder },
-  heroTagText:  { fontSize: 11, color: D.secondary, fontWeight: "600" },
-  heroAvatarWrap:{ width: 88, height: 88, borderRadius: 24, overflow: "hidden", backgroundColor: D.card, borderWidth: 2, borderColor: D.cardBorder, alignItems: "center", justifyContent: "center" },
-  heroArrow:    { width: 32, height: 32, borderRadius: 10, backgroundColor: "rgba(76,175,132,0.2)", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#4CAF8440" },
+  section:      { marginBottom: 8 },
+  sectionRow:   { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, marginBottom: 12 },
+  listHead:     { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 4, paddingBottom: 12 },
+  sectionLabel: { fontSize: 11, fontWeight: "800", color: D.teal, letterSpacing: 1.6 },
 
-  /* ─── Chips ───────────────────────────────────────────────────── */
-  chipsRow:    { paddingHorizontal: 16, gap: 8, paddingBottom: 16 },
-  chip:        { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: D.chip, borderWidth: 1, borderColor: D.cardBorder },
-  chipActive:  { backgroundColor: D.chipActive, borderColor: D.chipActive },
-  chipText:    { fontSize: 13, color: D.chipTextInactive, fontWeight: "600" },
-  chipTextActive:{ color: D.primary },
+  dotsRow: { flexDirection: "row", gap: 4, alignItems: "center" },
+  dot:     { height: 4, borderRadius: 2 },
+  dotOn:   { width: 20, backgroundColor: D.teal },
+  dotOff:  { width: 4, backgroundColor: D.border },
 
-  /* ─── Near header ─────────────────────────────────────────────── */
-  nearHeader:  { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20, marginBottom: 8 },
-  nearTitle:   { fontSize: 11, fontWeight: "800", color: D.label, letterSpacing: 1.5 },
-  nearLink:    { fontSize: 12, color: D.accentText, fontWeight: "600" },
+  countBadge:    { backgroundColor: D.sage, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 3 },
+  countBadgeTxt: { fontSize: 11, fontWeight: "700", color: "#fff" },
 
-  /* ─── Icono cafetería ─────────────────────────────────────────── */
-  cafeIcon:    { alignItems: "center", justifyContent: "center", flexShrink: 0 },
-  cafeInitial: { fontWeight: "800", color: D.primary },
+  /* ── Featured card ── */
+  featCard: {
+    flex: 1,
+    borderRadius: 22, overflow: "hidden", minHeight: 192,
+    justifyContent: "space-between",
+    padding: 20,
+  },
+  featTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  featBadge: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: "rgba(255,255,255,0.12)", borderRadius: 8,
+    paddingHorizontal: 8, paddingVertical: 4,
+  },
+  featBadgeText:  { fontSize: 9, color: D.gold, fontWeight: "800", letterSpacing: 1 },
+  featRating: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: "rgba(201,168,76,0.2)", borderRadius: 8,
+    paddingHorizontal: 8, paddingVertical: 4,
+  },
+  featRatingText: { fontSize: 12, color: "#fff", fontWeight: "700" },
 
-  /* ─── Item lista ──────────────────────────────────────────────── */
-  listItem:       { flexDirection: "row", alignItems: "center", backgroundColor: D.card, marginHorizontal: 16, marginBottom: 10, borderRadius: 16, borderWidth: 1, borderColor: D.cardBorder, padding: 14, gap: 12 },
-  listInfo:       { flex: 1 },
-  listTopRow:     { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 3 },
-  listName:       { fontSize: 15, fontWeight: "700", color: D.primary, flex: 1, marginRight: 8 },
-  listCity:       { fontSize: 12, color: D.secondary, marginBottom: 6 },
-  listRating:     { flexDirection: "row", alignItems: "center", gap: 3 },
-  listRatingText: { fontSize: 12, color: "#FFD700", fontWeight: "700" },
-  listTagsRow:    { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
-  listTag:        { backgroundColor: D.chip, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1, borderColor: D.cardBorder },
-  listTagText:    { fontSize: 10, color: D.secondary, fontWeight: "600" },
+  featBottom:  { gap: 5 },
+  featName:    { fontSize: 24, fontWeight: "900", color: "#fff", letterSpacing: -0.3 },
+  featCityRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+  featCity:    { fontSize: 12, color: "rgba(255,255,255,0.6)" },
+  featBtn: {
+    alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6,
+    backgroundColor: "#fff", borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 8, marginTop: 6,
+  },
+  featBtnText: { fontSize: 12, fontWeight: "800", color: D.teal },
 
-  /* ─── Badge estado ────────────────────────────────────────────── */
-  badge:     { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8 },
-  badgeText: { fontSize: 10, fontWeight: "700" },
+  featInitialWrap: {
+    position: "absolute", top: 18, right: 18,
+    width: 72, height: 72, borderRadius: 22,
+    alignItems: "center", justifyContent: "center",
+  },
+  featInitialText: { fontSize: 32, fontWeight: "900", color: "rgba(255,255,255,0.8)" },
 
-  /* ─── Empty ───────────────────────────────────────────────────── */
-  empty:     { alignItems: "center", paddingTop: 60, gap: 12 },
-  emptyText: { color: D.secondary, fontSize: 14, textAlign: "center" },
+  /* ── Category chips ── */
+  catsRow: { paddingHorizontal: 20, paddingVertical: 12, gap: 8 },
+  chip: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    paddingHorizontal: 14, paddingVertical: 9, borderRadius: 22,
+    backgroundColor: "#fff",
+    borderWidth: 1.5, borderColor: D.border,
+  },
+  chipOn:    { backgroundColor: D.teal, borderColor: D.teal },
+  chipTxt:   { fontSize: 12, color: D.sage, fontWeight: "700" },
+  chipTxtOn: { color: "#fff" },
+
+  /* ── Cafeteria list card ── */
+  listContent: { paddingBottom: 110 },
+  cardWrap:    { paddingHorizontal: 16, marginBottom: 10 },
+
+  cafeCard: {
+    borderRadius: 18, overflow: "hidden",
+    shadowColor: "#0D5A52",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.12, shadowRadius: 8, elevation: 4,
+  },
+  cafeCardTop: {
+    flexDirection: "row", alignItems: "center",
+    paddingHorizontal: 14, paddingVertical: 14, gap: 12,
+  },
+  cafeCardInitialWrap: {
+    width: 44, height: 44, borderRadius: 13,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems: "center", justifyContent: "center",
+    flexShrink: 0,
+  },
+  cafeCardInitial: { fontSize: 22, fontWeight: "900", color: "#fff" },
+  cafeCardTopInfo: { flex: 1 },
+  cafeCardName:    { fontSize: 15, fontWeight: "800", color: "#fff", marginBottom: 3 },
+
+  ratingRow: { flexDirection: "row", alignItems: "center", gap: 3 },
+  ratingText:{ fontSize: 11, color: D.gold, fontWeight: "700" },
+
+  cafeCardBottom: {
+    backgroundColor: "#fff",
+    paddingHorizontal: 14, paddingVertical: 12, gap: 8,
+  },
+  cafeCardBottomRow: { flexDirection: "row", alignItems: "center", gap: 5 },
+  cafeCardCity:      { fontSize: 12, color: D.sage, fontWeight: "500", flex: 1 },
+  cafeCardTags:      { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
+
+  tag:    { backgroundColor: D.surface, borderRadius: 8, paddingHorizontal: 9, paddingVertical: 3 },
+  tagTxt: { fontSize: 10, color: D.teal, fontWeight: "700" },
+
+  estadoTag: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3,
+    borderWidth: 1,
+  },
+  estadoDot: { width: 5, height: 5, borderRadius: 3 },
+  estadoTxt: { fontSize: 10, fontWeight: "700" },
+
+  /* ── Empty state ── */
+  emptyWrap:  { backgroundColor: D.bg },
+  empty:      { alignItems: "center", paddingTop: 60, paddingBottom: 40, gap: 12 },
+  emptyIcon:  { width: 72, height: 72, borderRadius: 20, backgroundColor: D.surface, alignItems: "center", justifyContent: "center" },
+  emptyTitle: { fontSize: 17, fontWeight: "700", color: D.primary },
+  emptySub:   { fontSize: 13, color: D.sage },
 });

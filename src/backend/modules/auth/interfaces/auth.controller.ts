@@ -72,15 +72,20 @@ export const authController = {
     } catch (err) { next(err); }
   },
 
-  // GET /api/auth/google?rol=cliente|admin
+  // GET /api/auth/google?rol=cliente|admin&platform=mobile&scheme=caffiq
   async googleRedirect(req: Request, res: Response, next: NextFunction) {
     try {
       const rol = (req.query.rol as string) ?? "cliente";
+      const platform = req.query.platform as string | undefined;
+      const scheme = req.query.scheme as string | undefined;
       if (!["cliente", "admin"].includes(rol)) throw new AppError("Rol invalido", 400);
+      const params = new URLSearchParams({ rol });
+      if (platform) params.set("platform", platform);
+      if (scheme) params.set("scheme", scheme);
       const { data, error } = await supabaseAdmin.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${env.google.redirectUrl}?rol=${rol}`,
+          redirectTo: `${env.google.redirectUrl}?${params.toString()}`,
           queryParams: { access_type: "offline", prompt: "consent" },
         },
       });
@@ -93,6 +98,8 @@ export const authController = {
   async googleCallback(req: Request, res: Response, next: NextFunction) {
     try {
       const { code, rol } = req.query as { code: string; rol: string };
+      const platform = req.query.platform as string | undefined;
+      const appScheme = (req.query.scheme as string) || "caffiq";
       if (!code) throw new AppError("Codigo de autorizacion no recibido", 400);
       const { data: sessionData, error } = await supabaseAdmin.auth.exchangeCodeForSession(code);
       if (error || !sessionData.user) throw new AppError("Error al autenticar con Google", 401);
@@ -103,7 +110,16 @@ export const authController = {
         email:        googleUser.email ?? "",
         rol:          (rol as "cliente" | "admin") ?? "cliente",
       });
-      res.status(200).json(resultado);
+      if (platform === "mobile") {
+        const redirectParams = new URLSearchParams({
+          token: resultado.token,
+          usuario: JSON.stringify(resultado.usuario),
+          necesita_telefono: String(resultado.necesita_telefono),
+        });
+        res.redirect(`${appScheme}://auth/callback?${redirectParams.toString()}`);
+      } else {
+        res.status(200).json(resultado);
+      }
     } catch (err) { next(err); }
   },
 

@@ -18,6 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { Caffiq } from "@/frontend/constants/theme";
 import { authService } from "@/frontend/services/auth.service";
+import { useAuth } from "@/frontend/context/AuthContext";
 
 type Rol = "cliente" | "admin";
 type Errors = Record<string, string>;
@@ -173,6 +174,7 @@ function LogoPicker({
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 export default function RegisterScreen() {
+  const { loginWithGoogle } = useAuth();
   const [rol, setRol] = useState<Rol>("cliente");
 
   const [nomCompleto,     setNomCompleto]     = useState("");
@@ -277,6 +279,19 @@ export default function RegisterScreen() {
           ? "Este correo o número de teléfono ya tiene una cuenta. Si aún no verificaste tu número, revisa tu WhatsApp."
           : msg
       );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogle = async () => {
+    try {
+      setLoading(true);
+      await loginWithGoogle(rol);
+      router.replace("/(tabs)");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Error al iniciar sesion con Google";
+      Alert.alert("Error", msg);
     } finally {
       setLoading(false);
     }
@@ -405,7 +420,7 @@ export default function RegisterScreen() {
                 <Text style={styles.dividerText}>o</Text>
                 <View style={styles.dividerLine} />
               </View>
-              <TouchableOpacity style={styles.googleBtn} activeOpacity={0.85} onPress={() => Alert.alert("Próximamente", "Google en desarrollo.")}>
+              <TouchableOpacity style={styles.googleBtn} activeOpacity={0.85} onPress={handleGoogle}>
                 <Text style={styles.googleG}>G</Text>
                 <Text style={styles.googleText}>Continuar con Google</Text>
               </TouchableOpacity>

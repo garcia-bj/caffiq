@@ -3,10 +3,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/frontend/context/AuthContext";
 
 const T = {
-  bg:       "#091A17",
-  border:   "#1A3A2C",
-  active:   "#4CAF84",
-  inactive: "#4A6B5E",
+  bg:       "#ffffff",
+  border:   "#D4E6DF",
+  active:   "#0D5A52",
+  inactive: "#6FA58B",
 };
 
 export default function TabLayout() {
@@ -17,26 +17,29 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarHideOnKeyboard: false,
+        tabBarHideOnKeyboard: true,
         tabBarStyle: {
           backgroundColor: T.bg,
           borderTopColor: T.border,
           borderTopWidth: 1,
-          height: 62,
+          height: 64,
           paddingBottom: 10,
           paddingTop: 6,
           position: "absolute",
           bottom: 0,
           left: 0,
           right: 0,
-          elevation: 8,
+          elevation: 12,
+          shadowColor: "#0D5A52",
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.08,
+          shadowRadius: 8,
         },
         tabBarActiveTintColor: T.active,
         tabBarInactiveTintColor: T.inactive,
-        tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: "700" },
       }}
     >
-      {/* ── Pantalla inicio cliente (oculta para admin) ────────────── */}
       <Tabs.Screen
         name="index"
         options={{
@@ -45,28 +48,22 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} />,
         }}
       />
-
-      {/* ── Pantalla cafeterías admin (oculta para cliente) ─────────── */}
       <Tabs.Screen
         name="cafeterias"
         options={{
-          title: "Cafeterías",
+          title: "Dashboard",
           href: isAdmin ? undefined : null,
-          tabBarIcon: ({ color, size }) => <Ionicons name="storefront-outline" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <Ionicons name="grid-outline" size={size} color={color} />,
         }}
       />
-
-      {/* ── Buscar (solo cliente) ────────────────────────────────────── */}
       <Tabs.Screen
         name="buscar"
         options={{
           title: "Buscar",
           href: isAdmin ? null : undefined,
-          tabBarIcon: ({ color, size }) => <Ionicons name="search" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <Ionicons name="map-outline" size={size} color={color} />,
         }}
       />
-
-      {/* ── Carrito (solo cliente) ───────────────────────────────────── */}
       <Tabs.Screen
         name="carrito"
         options={{
@@ -75,8 +72,14 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => <Ionicons name="bag-outline" size={size} color={color} />,
         }}
       />
-
-      {/* ── Perfil (ambos roles) ─────────────────────────────────────── */}
+      <Tabs.Screen
+        name="mis-pedidos"
+        options={{
+          title: "Pedidos",
+          href: isAdmin ? null : undefined,
+          tabBarIcon: ({ color, size }) => <Ionicons name="receipt-outline" size={size} color={color} />,
+        }}
+      />
       <Tabs.Screen
         name="perfil"
         options={{
@@ -84,8 +87,6 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => <Ionicons name="person-outline" size={size} color={color} />,
         }}
       />
-
-      {/* ── Ocultar pantallas que no van en el tab bar ───────────────── */}
       <Tabs.Screen name="explore" options={{ href: null }} />
     </Tabs>
   );

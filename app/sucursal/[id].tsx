@@ -1,37 +1,36 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   View, Text, StyleSheet, FlatList, Image,
-  TouchableOpacity, ActivityIndicator, ScrollView, Alert,
+  TouchableOpacity, ActivityIndicator, Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/frontend/context/AuthContext";
-import { useCart } from "@/frontend/context/CartContext";
+import { useCart, type OpcionSeleccionada } from "@/frontend/context/CartContext";
 import { productosService, type ProductoPublico } from "@/frontend/services/productos.service";
-import { SucursalMap } from "@/frontend/components/SucursalMap";
+import { personalizacionesService, type Personalizacion } from "@/frontend/services/personalizaciones.service";
+import { PersonalizacionModal } from "@/frontend/components/PersonalizacionModal";
 
 const D = {
-  bg:          "#F5F0E8",
-  header:      "#2C1A0E",
-  card:        "#FFFFFF",
-  cardBorder:  "#EDE8DF",
-  primary:     "#1A1A1A",
-  secondary:   "#7A6A5A",
-  accent:      "#0D5A52",
-  chipActive:  "#0D5A52",
-  chipText:    "#FFFFFF",
-  chipBg:      "#E8E0D4",
-  chipTextOff: "#5A4A3A",
-  price:       "#0D5A52",
+  bg:         "#EDF7F4",
+  header:     "#0D5A52",
+  card:       "#ffffff",
+  cardBorder: "#C8DDD7",
+  surface:    "#D4EDE6",
+  primary:    "#2C1819",
+  secondary:  "#6FA58B",
+  accent:     "#0D5A52",
+  accentBg:   "#C0DDD5",
+  price:      "#0D5A52",
+  stockWarn:  "#B45309",
+  stockOut:   "#541A1A",
   badgeColors: {
     Popular: { bg: "#541A1A", text: "#FFFFFF" },
     Nuevo:   { bg: "#0D5A52", text: "#FFFFFF" },
     Fresco:  { bg: "#1A4A30", text: "#FFFFFF" },
   } as Record<string, { bg: string; text: string }>,
 } as const;
-
-const CATEGORIAS = ["Todos", "Espresso", "Cold Brew", "Frappé", "Especialidad"];
 
 function Badge({ label }: { label: string }) {
   const colors = D.badgeColors[label] ?? { bg: "#333", text: "#FFF" };
@@ -44,16 +43,39 @@ function Badge({ label }: { label: string }) {
 
 function ProductoCard({
   item,
+  cartQuantity,
   onAgregar,
 }: {
   item: ProductoPublico;
+  cartQuantity: number;
   onAgregar: (producto: ProductoPublico) => void;
 }) {
+  const stockLimite = item.stock !== null && item.stock !== undefined;
+  const atLimit     = stockLimite && cartQuantity >= (item.stock as number);
+  const remaining   = stockLimite ? (item.stock as number) - cartQuantity : null;
+  const lowStock    = remaining !== null && remaining <= 3 && remaining > 0;
+  const noStock     = stockLimite && (item.stock as number) === 0;
+
   return (
     <View style={styles.productoCard}>
       {item.badge ? (
         <View style={styles.badgeWrap}>
           <Badge label={item.badge} />
+        </View>
+      ) : null}
+
+      {/* Indicador de stock bajo — sobre la imagen */}
+      {noStock ? (
+        <View style={styles.stockOutBanner}>
+          <Text style={styles.stockOutText}>Sin stock</Text>
+        </View>
+      ) : atLimit ? (
+        <View style={styles.stockLimitBanner}>
+          <Text style={styles.stockLimitText}>Límite alcanzado</Text>
+        </View>
+      ) : lowStock ? (
+        <View style={styles.stockLowBanner}>
+          <Text style={styles.stockLowText}>¡Solo quedan {remaining}!</Text>
         </View>
       ) : null}
 
@@ -70,17 +92,28 @@ function ProductoCard({
         {item.descripcion ? (
           <Text style={styles.productoDesc} numberOfLines={2}>{item.descripcion}</Text>
         ) : null}
+
         <View style={styles.priceRow}>
           <Text style={styles.productoPrecio}>${item.precio.toFixed(2)}</Text>
-          {item.disponible ? (
+          {item.disponible && !noStock ? (
             <TouchableOpacity
-              style={styles.addBtn}
-              onPress={() => onAgregar(item)}
+              style={[styles.addBtn, atLimit && styles.addBtnDisabled]}
+              onPress={() => !atLimit && onAgregar(item)}
+              disabled={atLimit}
               hitSlop={6}
             >
-              <Ionicons name="add" size={18} color="#fff" />
+              <Ionicons name="add" size={18} color={atLimit ? "#C0C0C0" : "#fff"} />
+              {cartQuantity > 0 && (
+                <View style={styles.addBtnBadge}>
+                  <Text style={styles.addBtnBadgeText}>{cartQuantity > 9 ? "9+" : cartQuantity}</Text>
+                </View>
+              )}
             </TouchableOpacity>
-          ) : null}
+          ) : (
+            <Text style={styles.noDisponible}>
+              {noStock ? "Sin stock" : "No disponible"}
+            </Text>
+          )}
         </View>
       </View>
     </View>
@@ -89,34 +122,35 @@ function ProductoCard({
 
 export default function SucursalMenuScreen() {
   const {
-    cafeteria_id, cafeteria_nombre, sucursal_nombre,
-    sucursal_direccion, latitud: latStr, longitud: lngStr,
+    id: sucursal_id, cafeteria_id, cafeteria_nombre, sucursal_nombre,
   } = useLocalSearchParams<{
+    id: string;
     cafeteria_id: string;
     cafeteria_nombre: string;
     sucursal_nombre: string;
-    sucursal_direccion?: string;
-    latitud?: string;
-    longitud?: string;
   }>();
 
-  const { token }                              = useAuth();
-  const { agregar, vaciar, cantidad_total, cafeteria_id: cartCafId } = useCart();
-  const [categoriaActiva, setCategoriaActiva]  = useState("Todos");
-  const [productos, setProductos]              = useState<ProductoPublico[]>([]);
-  const [loading, setLoading]                  = useState(true);
-  const [error, setError]                      = useState<string | null>(null);
+  const { token }   = useAuth();
+  const { agregar, actualizar, vaciar, items, cantidad_total, cafeteria_id: cartCafId } = useCart();
+  const [productos, setProductos] = useState<ProductoPublico[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState<string | null>(null);
 
-  const latitud  = latStr  ? Number(latStr)  : null;
-  const longitud = lngStr ? Number(lngStr) : null;
-  const tieneUbicacion = latitud !== null && longitud !== null && !isNaN(latitud) && !isNaN(longitud);
+  const [personalizaciones, setPersonalizaciones] = useState<Personalizacion[]>([]);
+  const [cargandoPers, setCargandoPers] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [productoSeleccionado, setProductoSeleccionado] = useState<ProductoPublico | null>(null);
 
-  const cargar = useCallback(async (cat: string) => {
+  const cargar = useCallback(async () => {
     if (!token || !cafeteria_id) return;
     setLoading(true);
     try {
-      const { productos: data } = await productosService.listar(token, cafeteria_id, cat);
+      const [{ productos: data }, { personalizaciones: pers }] = await Promise.all([
+        productosService.listar(token, cafeteria_id),
+        personalizacionesService.listar(token, cafeteria_id),
+      ]);
       setProductos(data);
+      setPersonalizaciones(pers);
       setError(null);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Error cargando menú");
@@ -125,12 +159,16 @@ export default function SucursalMenuScreen() {
     }
   }, [token, cafeteria_id]);
 
-  useEffect(() => { cargar(categoriaActiva); }, [cargar, categoriaActiva]);
+  useEffect(() => { cargar(); }, [cargar]);
 
-  const handleAgregar = (producto: ProductoPublico) => {
-    const ok = agregar(producto, cafeteria_id!, cafeteria_nombre ?? "Cafetería");
-    if (!ok) {
-      // Conflicto: hay productos de otra cafetería
+  const getCartQuantity = (productoId: string) =>
+    items.filter((i) => i.producto.id === productoId).reduce((s, i) => s + i.cantidad, 0);
+
+  const agregarConPersonalizacion = (producto: ProductoPublico, seleccionadas: OpcionSeleccionada[]) => {
+    const sid  = sucursal_id ?? "";
+    const snom = sucursal_nombre ?? "";
+    const resultado = agregar(producto, cafeteria_id!, cafeteria_nombre ?? "Cafetería", sid, snom, seleccionadas);
+    if (resultado === "cafeteria_conflict") {
       Alert.alert(
         "Carrito con otro pedido",
         `Tu carrito tiene productos de otra cafetería. ¿Quieres vaciarlo y agregar de ${cafeteria_nombre}?`,
@@ -141,19 +179,42 @@ export default function SucursalMenuScreen() {
             style: "destructive",
             onPress: () => {
               vaciar();
-              agregar(producto, cafeteria_id!, cafeteria_nombre ?? "Cafetería");
+              agregar(producto, cafeteria_id!, cafeteria_nombre ?? "Cafetería", sid, snom, seleccionadas);
             },
           },
         ],
       );
+    } else if (resultado === "stock_exceeded") {
+      Alert.alert("Stock agotado", `Ya agregaste el máximo disponible de "${producto.nombre}".`);
     }
+  };
+
+  const handleAgregar = (producto: ProductoPublico) => {
+    if (personalizaciones.length > 0) {
+      setProductoSeleccionado(producto);
+      setModalVisible(true);
+    } else {
+      agregarConPersonalizacion(producto, []);
+    }
+  };
+
+  const handleReducir = (productoId: string) => {
+    // Reduce el último ítem del mismo producto (sin importar personalización)
+    const ultimo = [...items].reverse().find((i) => i.producto.id === productoId);
+    if (ultimo) actualizar(ultimo.id, ultimo.cantidad - 1);
   };
 
   const irAlCarrito = () => router.push("/(tabs)/carrito" as never);
 
   const renderItem = ({ item }: { item: ProductoPublico }) => (
-    <ProductoCard item={item} onAgregar={handleAgregar} />
+    <ProductoCard
+      item={item}
+      cartQuantity={getCartQuantity(item.id)}
+      onAgregar={handleAgregar}
+    />
   );
+
+  const tienePersonalizaciones = personalizaciones.length > 0;
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -164,7 +225,6 @@ export default function SucursalMenuScreen() {
           <Text style={styles.backText}>Volver</Text>
         </TouchableOpacity>
 
-        {/* Botón carrito con badge */}
         <TouchableOpacity style={styles.cartBtn} onPress={irAlCarrito}>
           <Ionicons name="bag-outline" size={22} color="#FFFFFF" />
           {cantidad_total > 0 ? (
@@ -186,25 +246,6 @@ export default function SucursalMenuScreen() {
         </View>
       </View>
 
-      {/* ── Chips de categoría ────────────────────────────────────── */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.chipsRow}
-      >
-        {CATEGORIAS.map((cat) => (
-          <TouchableOpacity
-            key={cat}
-            style={[styles.chip, categoriaActiva === cat && styles.chipActive]}
-            onPress={() => setCategoriaActiva(cat)}
-          >
-            <Text style={[styles.chipText, categoriaActiva === cat && styles.chipTextActive]}>
-              {cat}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
       {/* ── Contenido ─────────────────────────────────────────────── */}
       {loading ? (
         <View style={styles.center}>
@@ -213,7 +254,7 @@ export default function SucursalMenuScreen() {
       ) : error ? (
         <View style={styles.center}>
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity onPress={() => cargar(categoriaActiva)} style={styles.retryBtn}>
+          <TouchableOpacity onPress={() => cargar()} style={styles.retryBtn}>
             <Text style={styles.retryText}>Reintentar</Text>
           </TouchableOpacity>
         </View>
@@ -229,18 +270,8 @@ export default function SucursalMenuScreen() {
           ListEmptyComponent={
             <View style={styles.center}>
               <Text style={{ fontSize: 40 }}>☕</Text>
-              <Text style={styles.emptyText}>No hay productos en esta categoría</Text>
+              <Text style={styles.emptyText}>No hay productos disponibles</Text>
             </View>
-          }
-          ListFooterComponent={
-            tieneUbicacion ? (
-              <SucursalMap
-                latitud={latitud!}
-                longitud={longitud!}
-                nombre={sucursal_nombre ?? "Sucursal"}
-                direccion={sucursal_direccion}
-              />
-            ) : null
           }
         />
       )}
@@ -257,6 +288,22 @@ export default function SucursalMenuScreen() {
           <Ionicons name="chevron-forward" size={18} color="#fff" />
         </TouchableOpacity>
       ) : null}
+
+      <PersonalizacionModal
+        visible={modalVisible}
+        producto={productoSeleccionado}
+        personalizaciones={personalizaciones}
+        cargando={cargandoPers}
+        onConfirmar={(seleccionadas) => {
+          setModalVisible(false);
+          if (productoSeleccionado) agregarConPersonalizacion(productoSeleccionado, seleccionadas);
+          setProductoSeleccionado(null);
+        }}
+        onCancelar={() => {
+          setModalVisible(false);
+          setProductoSeleccionado(null);
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -265,12 +312,8 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: D.bg },
 
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: D.header,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+    backgroundColor: D.header, paddingHorizontal: 16, paddingVertical: 12,
   },
   backBtn:  { flexDirection: "row", alignItems: "center", gap: 6 },
   backText: { color: "#FFFFFF", fontSize: 14, fontWeight: "600" },
@@ -283,8 +326,7 @@ const styles = StyleSheet.create({
     position: "absolute", top: -4, right: -4,
     backgroundColor: "#4CAF84", borderRadius: 8,
     minWidth: 16, height: 16,
-    alignItems: "center", justifyContent: "center",
-    paddingHorizontal: 3,
+    alignItems: "center", justifyContent: "center", paddingHorizontal: 3,
   },
   cartBadgeText: { fontSize: 10, color: "#fff", fontWeight: "800" },
 
@@ -293,40 +335,50 @@ const styles = StyleSheet.create({
   sucursalRow:     { flexDirection: "row", alignItems: "center", gap: 4 },
   sucursalNombre:  { fontSize: 13, color: "#B0C4BA", fontWeight: "500" },
 
-  chipsRow:       { paddingHorizontal: 16, paddingVertical: 14, gap: 8 },
-  chip:           { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: D.chipBg },
-  chipActive:     { backgroundColor: D.chipActive },
-  chipText:       { fontSize: 13, fontWeight: "600", color: D.chipTextOff },
-  chipTextActive: { color: D.chipText },
-
   listContent: { paddingHorizontal: 12, paddingBottom: 100 },
   row:         { justifyContent: "space-between", marginBottom: 12 },
 
   productoCard: {
-    flex: 0.48,
-    backgroundColor: D.card,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: D.cardBorder,
-    overflow: "hidden",
-    paddingBottom: 12,
+    flex: 0.48, backgroundColor: D.card, borderRadius: 16,
+    borderWidth: 1, borderColor: D.cardBorder, overflow: "hidden", paddingBottom: 12,
   },
-  badgeWrap:       { position: "absolute", top: 8, left: 8, zIndex: 1 },
+  badgeWrap:       { position: "absolute", top: 8, left: 8, zIndex: 2 },
   badge:           { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   badgeText:       { fontSize: 10, fontWeight: "700" },
-  productoImgWrap: { height: 110, backgroundColor: "#F0EAE0", alignItems: "center", justifyContent: "center" },
+
+  // Banners de stock
+  stockOutBanner:   { position: "absolute", top: 8, right: 8, zIndex: 2, backgroundColor: D.stockOut, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
+  stockOutText:     { color: "#fff", fontSize: 9, fontWeight: "800" },
+  stockLimitBanner: { position: "absolute", top: 8, right: 8, zIndex: 2, backgroundColor: D.stockOut, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
+  stockLimitText:   { color: "#fff", fontSize: 9, fontWeight: "800" },
+  stockLowBanner:   { position: "absolute", top: 8, right: 8, zIndex: 2, backgroundColor: D.stockWarn, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
+  stockLowText:     { color: "#fff", fontSize: 9, fontWeight: "800" },
+
+  productoImgWrap: { height: 110, backgroundColor: D.surface, alignItems: "center", justifyContent: "center" },
   productoImg:     { width: "100%", height: "100%" },
   productoEmoji:   { fontSize: 44 },
   productoInfo:    { paddingHorizontal: 10, paddingTop: 8, gap: 3 },
   productoNombre:  { fontSize: 13, fontWeight: "700", color: D.primary },
   productoDesc:    { fontSize: 11, color: D.secondary, lineHeight: 15 },
-  priceRow:        { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 4 },
-  productoPrecio:  { fontSize: 14, fontWeight: "800", color: D.price },
+
+  priceRow:       { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 6 },
+  productoPrecio: { fontSize: 15, fontWeight: "800", color: D.price },
+  noDisponible:   { fontSize: 10, color: D.secondary, fontStyle: "italic" },
+
   addBtn: {
     width: 28, height: 28, borderRadius: 8,
     backgroundColor: D.accent,
     alignItems: "center", justifyContent: "center",
+    position: "relative",
   },
+  addBtnDisabled: { backgroundColor: D.cardBorder },
+  addBtnBadge: {
+    position: "absolute", top: -6, right: -6,
+    backgroundColor: "#541A1A", borderRadius: 7,
+    minWidth: 14, height: 14,
+    alignItems: "center", justifyContent: "center", paddingHorizontal: 2,
+  },
+  addBtnBadgeText: { fontSize: 8, fontWeight: "800", color: "#fff" },
 
   center:    { flex: 1, alignItems: "center", justifyContent: "center", gap: 10, paddingTop: 60 },
   errorText: { color: "#D32F2F", fontSize: 13, textAlign: "center", paddingHorizontal: 20 },
@@ -334,25 +386,16 @@ const styles = StyleSheet.create({
   retryText: { color: "#FFF", fontWeight: "700" },
   emptyText: { color: D.secondary, fontSize: 14, textAlign: "center" },
 
-  // Barra flotante carrito
   floatingCart: {
-    position: "absolute",
-    bottom: 20, left: 16, right: 16,
-    backgroundColor: "#0D5A52",
-    borderRadius: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    elevation: 8,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    position: "absolute", bottom: 20, left: 16, right: 16,
+    backgroundColor: "#0D5A52", borderRadius: 16,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingHorizontal: 16, paddingVertical: 14,
+    elevation: 8, shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8,
   },
-  floatingLeft:       { flexDirection: "row", alignItems: "center", gap: 12 },
-  floatingBadge:      { backgroundColor: "#4CAF84", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 },
-  floatingBadgeText:  { fontSize: 13, color: "#fff", fontWeight: "800" },
-  floatingLabel:      { fontSize: 15, color: "#fff", fontWeight: "700" },
+  floatingLeft:      { flexDirection: "row", alignItems: "center", gap: 12 },
+  floatingBadge:     { backgroundColor: "#4CAF84", borderRadius: 10, paddingHorizontal: 10, paddingVertical: 4 },
+  floatingBadgeText: { fontSize: 13, color: "#fff", fontWeight: "800" },
+  floatingLabel:     { fontSize: 15, color: "#fff", fontWeight: "700" },
 });

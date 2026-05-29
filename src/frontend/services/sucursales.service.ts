@@ -26,6 +26,8 @@ export interface SucursalInput {
   horario_apertura?: string;
   horario_cierre?: string;
   imagen_url?: string;
+  latitud?: number | null;
+  longitud?: number | null;
 }
 
 const authFetch = async <T>(path: string, token: string, options: RequestInit = {}): Promise<T> => {

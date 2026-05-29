@@ -29,6 +29,8 @@ export class GoogleLogin {
         rol: input.rol,
         google_id: input.google_id,
       });
+    } else if (!usuario.google_id) {
+      await this.authRepo.vincularGoogleId(usuario.id, input.google_id);
     }
 
     return {

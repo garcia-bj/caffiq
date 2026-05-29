@@ -51,7 +51,7 @@ function BackgroundPattern() {
 }
 
 export default function LoginScreen() {
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const [nomUsuario, setNomUsuario] = useState("");
   const [password, setPassword]   = useState("");
   const [showPass, setShowPass]   = useState(false);
@@ -78,9 +78,17 @@ export default function LoginScreen() {
     }
   };
 
-  const handleGoogle = () => {
-    // TODO: abrir flujo OAuth
-    Alert.alert("Proximamente", "Login con Google en desarrollo.");
+  const handleGoogle = async () => {
+    try {
+      setLoading(true);
+      await loginWithGoogle("cliente");
+      router.replace("/(tabs)");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Error al iniciar sesion con Google";
+      Alert.alert("Error", msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

@@ -141,4 +141,13 @@ export class SupabaseAuthRepository implements IAuthRepository {
     if (error) throw new Error(error.message);
     return data as UsuarioEntity;
   }
+
+  async vincularGoogleId(id: string, google_id: string): Promise<void> {
+    const { error } = await supabaseAdmin
+      .from(T_USUARIOS)
+      .update({ google_id })
+      .eq("id", id);
+
+    if (error) throw new Error(error.message);
+  }
 }
