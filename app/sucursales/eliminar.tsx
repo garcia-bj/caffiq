@@ -5,13 +5,13 @@ import {
   Image, Modal, ActivityIndicator, Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { NavbarLateral } from "@/frontend/components/navbar-lateral";
+import { useNavbar } from "@/frontend/context/NavbarContext";
 import { useAuth } from "@/frontend/context/AuthContext";
 import { sucursalesService, type SucursalPublica } from "@/frontend/services/sucursales.service";
 
 export default function EliminarSucursal() {
   const { token, usuario } = useAuth();
-  const [navbarVisible, setNavbarVisible] = useState(false);
+  const { open: openNavbar } = useNavbar();
   const [sucursales, setSucursales] = useState<SucursalPublica[]>([]);
   const [cargandoLista, setCargandoLista] = useState(true);
   const [cargando, setCargando] = useState(false);
@@ -60,7 +60,7 @@ export default function EliminarSucursal() {
       <StatusBar barStyle="light-content" backgroundColor="#0D5A52" />
 
       <View style={styles.header}>
-        <TouchableOpacity style={styles.menuBtn} onPress={() => setNavbarVisible(true)}>
+        <TouchableOpacity style={styles.menuBtn} onPress={openNavbar}>
           <View style={styles.menuLine} />
           <View style={styles.menuLine} />
           <View style={styles.menuLine} />
@@ -129,7 +129,6 @@ export default function EliminarSucursal() {
         </View>
       </Modal>
 
-      <NavbarLateral visible={navbarVisible} onClose={() => setNavbarVisible(false)} />
     </SafeAreaView>
   );
 }
@@ -151,7 +150,7 @@ const styles = StyleSheet.create({
   },
   logoEmoji: { fontSize: 20 },
   scroll: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 32 },
+  scrollContent: { padding: 16, paddingBottom: 84 },
   sectionTitle: {
     fontSize: 18, fontWeight: "600", color: "#2d2d2d",
     textAlign: "center", marginBottom: 16, fontStyle: "italic",

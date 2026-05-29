@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { NavbarLateral } from "@/frontend/components/navbar-lateral";
+import { useNavbar } from "@/frontend/context/NavbarContext";
 import { useAuth } from "@/frontend/context/AuthContext";
 import { sucursalesService } from "@/frontend/services/sucursales.service";
 import { pedidosService } from "@/frontend/services/pedidos.service";
@@ -72,7 +72,7 @@ function saludar() {
 
 export default function DashboardAdminScreen() {
   const { token, usuario } = useAuth();
-  const [navbarVisible, setNavbarVisible] = useState(false);
+  const { open: openNavbar } = useNavbar();
   const [metricas, setMetricas] = useState<Metricas | null>(null);
   const [cargando, setCargando] = useState(true);
   const [refrescando, setRefrescando] = useState(false);
@@ -115,7 +115,7 @@ export default function DashboardAdminScreen() {
 
       {/* ── Header ──────────────────────────────────────────────── */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.menuBtn} onPress={() => setNavbarVisible(true)}>
+        <TouchableOpacity style={styles.menuBtn} onPress={openNavbar}>
           <View style={styles.menuLine} />
           <View style={styles.menuLine} />
           <View style={styles.menuLine} />
@@ -252,7 +252,6 @@ export default function DashboardAdminScreen() {
         <Text style={styles.footer}>Caffiq Admin · v1.0.0</Text>
       </ScrollView>
 
-      <NavbarLateral visible={navbarVisible} onClose={() => setNavbarVisible(false)} />
     </SafeAreaView>
   );
 }

@@ -219,6 +219,8 @@ function BottomCard({
         cafeteria_nombre:   sucursal.nom_cafeteria ?? "Cafetería",
         sucursal_nombre:    sucursal.nombre,
         sucursal_direccion: sucursal.direccion,
+        horario_apertura:   sucursal.horario_apertura  ?? undefined,
+        horario_cierre:     sucursal.horario_cierre    ?? undefined,
       },
     });
   };

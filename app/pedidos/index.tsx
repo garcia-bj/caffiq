@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, ActivityIndicator, Alert, Image, RefreshControl,
+  StatusBar, ActivityIndicator, Alert, Image, RefreshControl, Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/frontend/context/AuthContext";
-import { NavbarLateral } from "@/frontend/components/navbar-lateral";
+import { useNavbar } from "@/frontend/context/NavbarContext";
 import { pedidosService, type Pedido, type EstadoPedido, type TipoPedido } from "@/frontend/services/pedidos.service";
 
 const D = {
@@ -56,7 +56,7 @@ function PedidoCard({
   onAprobar?: () => void;
   onRechazar?: () => void;
 }) {
-  const [verFoto, setVerFoto] = useState(false);
+  const [fotoUrl, setFotoUrl] = useState<string | null>(null);
 
   return (
     <View style={styles.card}>
@@ -110,22 +110,27 @@ function PedidoCard({
       {pedido.comprobante_url ? (
         <TouchableOpacity
           style={styles.comprobanteBtn}
-          onPress={() => setVerFoto(!verFoto)}
+          onPress={() => setFotoUrl(pedido.comprobante_url!)}
           activeOpacity={0.8}
         >
           <Ionicons name="image-outline" size={16} color={D.accent} />
-          <Text style={styles.comprobanteBtnText}>
-            {verFoto ? "Ocultar comprobante" : "Ver comprobante de pago"}
-          </Text>
-          <Ionicons name={verFoto ? "chevron-up" : "chevron-down"} size={14} color={D.accent} />
+          <Text style={styles.comprobanteBtnText}>Ver comprobante de pago</Text>
+          <Ionicons name="expand-outline" size={14} color={D.accent} />
         </TouchableOpacity>
       ) : (
         <Text style={styles.sinComprobante}>Sin comprobante adjunto</Text>
       )}
 
-      {verFoto && pedido.comprobante_url ? (
-        <Image source={{ uri: pedido.comprobante_url }} style={styles.comprobanteImg} resizeMode="contain" />
-      ) : null}
+      <Modal visible={!!fotoUrl} transparent animationType="fade" onRequestClose={() => setFotoUrl(null)}>
+        <View style={styles.fotoModalOverlay}>
+          <TouchableOpacity style={styles.fotoModalClose} onPress={() => setFotoUrl(null)}>
+            <Ionicons name="close" size={26} color="#fff" />
+          </TouchableOpacity>
+          {fotoUrl ? (
+            <Image source={{ uri: fotoUrl }} style={styles.fotoModalImg} resizeMode="contain" />
+          ) : null}
+        </View>
+      </Modal>
 
       {/* Acciones (solo para pendientes) */}
       {pedido.estado === "pendiente" && onAprobar && onRechazar && (
@@ -146,7 +151,7 @@ function PedidoCard({
 
 export default function PedidosAdminScreen() {
   const { token, usuario } = useAuth();
-  const [navbarVisible, setNavbarVisible] = useState(false);
+  const { open: openNavbar } = useNavbar();
   const [tabActiva, setTabActiva] = useState<Tab>("pendiente");
   const [pedidos, setPedidos] = useState<Record<Tab, Pedido[]>>({
     pendiente: [], aprobado: [], rechazado: [],
@@ -205,7 +210,7 @@ export default function PedidosAdminScreen() {
       <StatusBar barStyle="light-content" backgroundColor={D.header} />
 
       <View style={styles.header}>
-        <TouchableOpacity style={styles.menuBtn} onPress={() => setNavbarVisible(true)}>
+        <TouchableOpacity style={styles.menuBtn} onPress={openNavbar}>
           <View style={styles.menuLine} />
           <View style={styles.menuLine} />
           <View style={styles.menuLine} />
@@ -282,7 +287,6 @@ export default function PedidosAdminScreen() {
         </ScrollView>
       )}
 
-      <NavbarLateral visible={navbarVisible} onClose={() => setNavbarVisible(false)} />
     </SafeAreaView>
   );
 }
@@ -321,7 +325,7 @@ const styles = StyleSheet.create({
   tabCountText: { fontSize: 10, color: D.hint, fontWeight: "700" },
   tabCountTextActiva: { color: "#fff" },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  scroll: { padding: 16, paddingBottom: 48 },
+  scroll: { padding: 16, paddingBottom: 84 },
   pageTitle: { fontSize: 20, fontWeight: "700", color: D.label, marginBottom: 16, fontStyle: "italic" },
   emptyBox: { alignItems: "center", paddingTop: 48, gap: 10 },
   emptyText: { fontSize: 14, color: D.hint },
@@ -370,7 +374,9 @@ const styles = StyleSheet.create({
     fontSize: 12, color: D.hint, fontStyle: "italic",
     paddingHorizontal: 14, paddingBottom: 10,
   },
-  comprobanteImg: { width: "100%", height: 200, backgroundColor: "#f9f9f9" },
+  fotoModalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.95)", justifyContent: "center", alignItems: "center" },
+  fotoModalClose: { position: "absolute", top: 48, right: 16, zIndex: 10, backgroundColor: "rgba(255,255,255,0.18)", borderRadius: 22, padding: 10 },
+  fotoModalImg: { width: "100%", height: "75%" },
   acciones: {
     flexDirection: "row", gap: 10, padding: 12,
     borderTopWidth: 1, borderTopColor: "#f5f0eb",

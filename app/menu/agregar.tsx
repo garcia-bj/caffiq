@@ -7,7 +7,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
-import { NavbarLateral } from "@/frontend/components/navbar-lateral";
+import { useNavbar } from "@/frontend/context/NavbarContext";
 import { useAuth } from "@/frontend/context/AuthContext";
 import { sucursalesService, type SucursalPublica } from "@/frontend/services/sucursales.service";
 import { productosService } from "@/frontend/services/productos.service";
@@ -15,7 +15,7 @@ import { subirImagenCloudinary } from "@/frontend/services/cloudinary";
 
 export default function AgregarProductoMenu() {
   const { token, usuario } = useAuth();
-  const [navbarVisible, setNavbarVisible] = useState(false);
+  const { open: openNavbar } = useNavbar();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [sucursales, setSucursales] = useState<SucursalPublica[]>([]);
   const [cargandoLista, setCargandoLista] = useState(true);
@@ -53,7 +53,7 @@ export default function AgregarProductoMenu() {
       return;
     }
     const resultado = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ["images"] as any,
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
@@ -114,7 +114,7 @@ export default function AgregarProductoMenu() {
       <StatusBar barStyle="light-content" backgroundColor="#0D5A52" />
 
       <View style={styles.header}>
-        <TouchableOpacity style={styles.menuBtn} onPress={() => setNavbarVisible(true)}>
+        <TouchableOpacity style={styles.menuBtn} onPress={openNavbar}>
           <View style={styles.menuLine} /><View style={styles.menuLine} /><View style={styles.menuLine} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>CAFFIQ</Text>
@@ -247,7 +247,6 @@ export default function AgregarProductoMenu() {
         </View>
       </Modal>
 
-      <NavbarLateral visible={navbarVisible} onClose={() => setNavbarVisible(false)} />
     </SafeAreaView>
   );
 }
@@ -264,7 +263,7 @@ const styles = StyleSheet.create({
   logoContainer: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" },
   logoEmoji: { fontSize: 20 },
   scroll: { flex: 1 },
-  scrollContent: { padding: 20, paddingBottom: 40 },
+  scrollContent: { padding: 20, paddingBottom: 84 },
   pageTitle: { fontSize: 22, fontWeight: "700", color: "#2C1819", marginBottom: 16, fontStyle: "italic", textAlign: "center" },
   sectionTitle: { fontSize: 18, fontWeight: "700", color: "#0D5A52", marginBottom: 16, marginTop: 4 },
   inputGroup: { marginBottom: 14 },

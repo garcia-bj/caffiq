@@ -144,8 +144,6 @@ export default function CarritoScreen() {
       const resultado = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images"] as any,
         quality: 0.85,
-        allowsEditing: true,
-        aspect: [4, 3],
       });
       if (!resultado.canceled && resultado.assets.length > 0) {
         setComprobante(resultado.assets[0].uri);

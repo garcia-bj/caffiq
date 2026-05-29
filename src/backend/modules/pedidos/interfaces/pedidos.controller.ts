@@ -1,7 +1,9 @@
 import type { Request, Response, NextFunction } from "express";
 import { AppError } from "@shared/errors/AppError";
+import { supabaseAdmin } from "@config/supabase";
 import { SupabasePedidoRepository } from "../infrastructure/repositories/SupabasePedidoRepository";
 import type { EstadoPedido, TipoPedido } from "../domain/entities/Pedido";
+import { enviarPushNotificacion } from "@shared/services/ExpoPushService";
 
 const repo = new SupabasePedidoRepository();
 
@@ -20,6 +22,9 @@ export const pedidosController = {
 
       const pedido = await repo.crear({ cliente_id, cafeteria_id, sucursal_id, items, total, tipo_pedido: tipo_pedido as TipoPedido, comprobante_url });
       res.status(201).json({ pedido });
+
+      // Notificar al admin — no-fatal, se ejecuta después de responder
+      notificarAdmin(cafeteria_id, total, tipo_pedido, items.length).catch(() => {});
     } catch (err) { next(err); }
   },
 
@@ -57,3 +62,29 @@ export const pedidosController = {
     } catch (err) { next(err); }
   },
 };
+
+async function notificarAdmin(cafeteria_id: string, total: number, tipo_pedido: string, numItems: number) {
+  const { data: cafeteria } = await supabaseAdmin
+    .from("cafeterias")
+    .select("admin_id")
+    .eq("id", cafeteria_id)
+    .single();
+
+  if (!cafeteria?.admin_id) return;
+
+  const { data: admin } = await supabaseAdmin
+    .from("usuarios")
+    .select("expo_push_token")
+    .eq("id", cafeteria.admin_id)
+    .maybeSingle();
+
+  if (!admin?.expo_push_token) return;
+
+  const tipoLabel = tipo_pedido === "local" ? "🪑 En el local" : "🛍️ Para llevar";
+  await enviarPushNotificacion(
+    admin.expo_push_token,
+    "🛒 Nuevo pedido recibido",
+    `${numItems} producto${numItems > 1 ? "s" : ""} · $${total.toFixed(2)} · ${tipoLabel}`,
+    { screen: "pedidos" },
+  );
+}

@@ -73,8 +73,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const loginWithGoogle = async (rol: "cliente" | "admin") => {
-    const { token, usuario } = await authService.googleLogin(rol);
-    await setSession(token, usuario);
+    // Solo abre el browser — app/auth/callback.tsx procesa el token y llama setSession
+    await authService.googleLogin(rol);
   };
 
   const logout = async () => {

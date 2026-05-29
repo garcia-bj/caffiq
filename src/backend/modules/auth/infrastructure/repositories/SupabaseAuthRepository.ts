@@ -142,6 +142,14 @@ export class SupabaseAuthRepository implements IAuthRepository {
     return data as UsuarioEntity;
   }
 
+  async guardarPushToken(id: string, token: string | null): Promise<void> {
+    const { error } = await supabaseAdmin
+      .from(T_USUARIOS)
+      .update({ expo_push_token: token })
+      .eq("id", id);
+    if (error) throw new Error(error.message);
+  }
+
   async vincularGoogleId(id: string, google_id: string): Promise<void> {
     const { error } = await supabaseAdmin
       .from(T_USUARIOS)

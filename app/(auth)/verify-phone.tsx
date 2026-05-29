@@ -21,7 +21,7 @@ const CODE_LENGTH = 6;
 const RESEND_SECONDS = 60;
 
 export default function VerifyPhoneScreen() {
-  const { usuario_id, telefono } = useLocalSearchParams<{ usuario_id: string; telefono: string }>();
+  const { usuario_id, telefono, from_google } = useLocalSearchParams<{ usuario_id: string; telefono: string; from_google?: string }>();
   const { setSession } = useAuth();
 
   const [code, setCode]           = useState<string[]>(Array(CODE_LENGTH).fill(""));
@@ -64,7 +64,12 @@ export default function VerifyPhoneScreen() {
       setLoading(true);
       const { token, usuario } = await authService.verifyPhone(usuario_id!, fullCode);
       await setSession(token, usuario);
-      router.replace("/(tabs)");
+
+      if (from_google === "1" && usuario.rol === "admin" && !usuario.cafeteria_id) {
+        router.replace("/auth/setup-cafeteria" as any);
+      } else {
+        router.replace("/(tabs)");
+      }
     } catch (e: unknown) {
       Alert.alert("Error", e instanceof Error ? e.message : "Codigo invalido");
       setCode(Array(CODE_LENGTH).fill(""));

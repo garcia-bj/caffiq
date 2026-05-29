@@ -10,14 +10,19 @@ const T_OPC  = "opciones_personalizacion";
 
 export class SupabasePersonalizacionRepository {
 
-  async listar(cafeteria_id: string): Promise<PersonalizacionEntity[]> {
-    const { data, error } = await supabaseAdmin
+  async listar(cafeteria_id: string, sucursal_id?: string): Promise<PersonalizacionEntity[]> {
+    let query = supabaseAdmin
       .from(T_PERS)
       .select(`*, opciones:${T_OPC}(id, personalizacion_id, nombre, precio_adicional, orden)`)
       .eq("cafeteria_id", cafeteria_id)
       .eq("activo", true)
       .order("orden", { ascending: true });
 
+    if (sucursal_id) {
+      query = query.eq("sucursal_id", sucursal_id);
+    }
+
+    const { data, error } = await query;
     if (error) throw new Error(error.message);
     return (data ?? []) as PersonalizacionEntity[];
   }

@@ -6,11 +6,12 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/frontend/context/AuthContext";
-import { NavbarLateral } from "@/frontend/components/navbar-lateral";
+import { useNavbar } from "@/frontend/context/NavbarContext";
 import {
   personalizacionesService,
   type Personalizacion, type OpcionPersonalizacion,
 } from "@/frontend/services/personalizaciones.service";
+import { sucursalesService, type SucursalPublica } from "@/frontend/services/sucursales.service";
 
 const D = {
   bg:      "#f5f0eb",
@@ -37,9 +38,17 @@ interface OpcionFormState {
 
 export default function PersonalizacionScreen() {
   const { token, usuario } = useAuth();
-  const [navbarVisible, setNavbarVisible] = useState(false);
+  const { open: openNavbar } = useNavbar();
+
+  // Sucursal selector
+  const [sucursales, setSucursales] = useState<SucursalPublica[]>([]);
+  const [cargandoSucs, setCargandoSucs] = useState(true);
+  const [sucursalId, setSucursalId] = useState<string | null>(null);
+  const [sucursalNombre, setSucursalNombre] = useState<string>("");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
   const [grupos, setGrupos] = useState<Personalizacion[]>([]);
-  const [cargando, setCargando] = useState(true);
+  const [cargando, setCargando] = useState(false);
 
   // Modal nuevo grupo
   const [modalGrupo, setModalGrupo] = useState(false);
@@ -54,19 +63,31 @@ export default function PersonalizacionScreen() {
   const [formOpcion, setFormOpcion] = useState<OpcionFormState>({ nombre: "", precio: "0" });
   const [guardandoOpcion, setGuardandoOpcion] = useState(false);
 
-  const cargar = useCallback(async () => {
+  useEffect(() => {
     if (!token || !usuario?.cafeteria_id) return;
+    setCargandoSucs(true);
+    sucursalesService.listar(token, usuario.cafeteria_id)
+      .then(({ sucursales: data }) => setSucursales(data ?? []))
+      .catch(() => Alert.alert("Error", "No se pudieron cargar las sucursales"))
+      .finally(() => setCargandoSucs(false));
+  }, [token, usuario?.cafeteria_id]);
+
+  const cargar = useCallback(async () => {
+    if (!token || !usuario?.cafeteria_id || !sucursalId) return;
+    setCargando(true);
     try {
-      const { personalizaciones } = await personalizacionesService.listar(token, usuario.cafeteria_id);
+      const { personalizaciones } = await personalizacionesService.listar(token, usuario.cafeteria_id, sucursalId);
       setGrupos(personalizaciones);
     } catch (e) {
       console.error(e);
     } finally {
       setCargando(false);
     }
-  }, [token, usuario?.cafeteria_id]);
+  }, [token, usuario?.cafeteria_id, sucursalId]);
 
-  useEffect(() => { cargar(); }, [cargar]);
+  useEffect(() => {
+    if (sucursalId) cargar();
+  }, [cargar, sucursalId]);
 
   // ── Grupo: abrir modal ───────────────────────────────────────────────────────
   const abrirNuevoGrupo = () => {
@@ -82,7 +103,7 @@ export default function PersonalizacionScreen() {
   };
 
   const guardarGrupo = async () => {
-    if (!token || !usuario?.cafeteria_id) return;
+    if (!token || !usuario?.cafeteria_id || !sucursalId) return;
     if (!formGrupo.nombre.trim()) {
       Alert.alert("Requerido", "El nombre del grupo no puede estar vacío.");
       return;
@@ -97,7 +118,7 @@ export default function PersonalizacionScreen() {
         setGrupos((prev) => prev.map((g) => g.id === personalizacion.id ? { ...g, ...personalizacion } : g));
       } else {
         const { personalizacion } = await personalizacionesService.crear(
-          token, usuario.cafeteria_id, formGrupo.nombre.trim(), formGrupo.requerido,
+          token, usuario.cafeteria_id, formGrupo.nombre.trim(), formGrupo.requerido, sucursalId,
         );
         setGrupos((prev) => [...prev, { ...personalizacion, opciones: [] }]);
       }
@@ -208,25 +229,71 @@ export default function PersonalizacionScreen() {
       <StatusBar barStyle="light-content" backgroundColor={D.header} />
 
       <View style={styles.header}>
-        <TouchableOpacity style={styles.menuBtn} onPress={() => setNavbarVisible(true)}>
+        <TouchableOpacity style={styles.menuBtn} onPress={openNavbar}>
           <View style={styles.menuLine} />
           <View style={styles.menuLine} />
           <View style={styles.menuLine} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>CAFFIQ</Text>
-        <TouchableOpacity style={styles.addBtn} onPress={abrirNuevoGrupo}>
+        <TouchableOpacity style={[styles.addBtn, !sucursalId && { opacity: 0.4 }]} onPress={sucursalId ? abrirNuevoGrupo : undefined}>
           <Ionicons name="add" size={22} color="#fff" />
         </TouchableOpacity>
       </View>
 
-      {cargando ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={D.accent} />
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <Text style={styles.pageTitle}>Personalización</Text>
+
+        {/* Selector de sucursal */}
+        <View style={styles.inputGroup}>
+          {cargandoSucs ? (
+            <ActivityIndicator size="small" color={D.accent} />
+          ) : (
+            <>
+              <TouchableOpacity
+                style={styles.dropdown}
+                onPress={() => setDropdownOpen((v) => !v)}
+              >
+                <Text style={styles.dropdownText}>
+                  {sucursalNombre || "Selecciona una sucursal"}
+                </Text>
+                <Ionicons name={dropdownOpen ? "chevron-up" : "chevron-down"} size={16} color="#fff" />
+              </TouchableOpacity>
+
+              {dropdownOpen && (
+                <View style={styles.dropdownList}>
+                  {sucursales.map((s) => (
+                    <TouchableOpacity
+                      key={s.id}
+                      style={styles.dropdownItem}
+                      onPress={() => {
+                        setSucursalId(s.id);
+                        setSucursalNombre(s.nombre);
+                        setDropdownOpen(false);
+                        setGrupos([]);
+                      }}
+                    >
+                      <Text style={styles.dropdownItemText}>{s.nombre}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </>
+          )}
         </View>
-      ) : (
-        <ScrollView contentContainerStyle={styles.scroll}>
-          <Text style={styles.pageTitle}>Personalización</Text>
-          <Text style={styles.pageSubtitle}>Define las opciones que verán tus clientes al hacer un pedido (tamaño, azúcar, temperatura, etc.)</Text>
+
+        {!sucursalId ? (
+          <View style={styles.emptyBox}>
+            <Ionicons name="location-outline" size={48} color={D.hint} />
+            <Text style={styles.emptyTitle}>Selecciona una sucursal</Text>
+            <Text style={styles.emptyText}>Las personalizaciones son independientes por sucursal.</Text>
+          </View>
+        ) : cargando ? (
+          <View style={styles.center}>
+            <ActivityIndicator size="large" color={D.accent} />
+          </View>
+        ) : (
+          <View>
+          <Text style={styles.pageSubtitle}>Opciones que verán los clientes al hacer un pedido en {sucursalNombre} (tamaño, azúcar, temperatura, etc.)</Text>
 
           {grupos.length === 0 ? (
             <View style={styles.emptyBox}>
@@ -288,8 +355,9 @@ export default function PersonalizacionScreen() {
               </View>
             ))
           )}
-        </ScrollView>
-      )}
+          </View>
+        )}
+      </ScrollView>
 
       {/* Modal: Nuevo/Editar grupo */}
       <Modal visible={modalGrupo} transparent animationType="slide">
@@ -377,7 +445,6 @@ export default function PersonalizacionScreen() {
         </View>
       </Modal>
 
-      <NavbarLateral visible={navbarVisible} onClose={() => setNavbarVisible(false)} />
     </SafeAreaView>
   );
 }
@@ -397,10 +464,25 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.2)",
     alignItems: "center", justifyContent: "center",
   },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  scroll: { padding: 16, paddingBottom: 48 },
-  pageTitle: { fontSize: 24, fontWeight: "700", color: D.label, marginBottom: 6, fontStyle: "italic" },
+  center: { justifyContent: "center", alignItems: "center", paddingVertical: 40 },
+  scroll: { padding: 16, paddingBottom: 84 },
+  pageTitle: { fontSize: 24, fontWeight: "700", color: D.label, marginBottom: 14, fontStyle: "italic" },
   pageSubtitle: { fontSize: 13, color: D.hint, lineHeight: 18, marginBottom: 20 },
+
+  inputGroup: { marginBottom: 16 },
+  dropdown: {
+    backgroundColor: D.chip, borderRadius: 8,
+    paddingHorizontal: 14, paddingVertical: 13,
+    flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+  },
+  dropdownText: { color: "#fff", fontSize: 14 },
+  dropdownList: {
+    backgroundColor: "#fff", borderRadius: 8, marginTop: 4,
+    elevation: 4, shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4,
+  },
+  dropdownItem: { paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#f0f0f0" },
+  dropdownItemText: { fontSize: 14, color: D.label },
   emptyBox: { alignItems: "center", paddingTop: 48, gap: 10 },
   emptyTitle: { fontSize: 18, fontWeight: "700", color: D.label },
   emptyText: { fontSize: 13, color: D.hint, textAlign: "center" },

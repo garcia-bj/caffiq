@@ -15,8 +15,9 @@ module.exports = {
     supportsTablet: true,
   },
   android: {
+    package: "com.bjgc.caffiq",
     adaptiveIcon: {
-      backgroundColor: "#E6F4FE",
+      backgroundColor: "#0D5A52",
       foregroundImage: "./assets/images/android-icon-foreground.png",
       backgroundImage: "./assets/images/android-icon-background.png",
       monochromeImage: "./assets/images/android-icon-monochrome.png",
@@ -28,8 +29,23 @@ module.exports = {
     output: "static",
     favicon: "./assets/images/favicon.png",
   },
+  owner: "bj-gc",
+  extra: {
+    eas: {
+      projectId: "ae200185-360e-4304-8520-0c95c35a7996",
+    },
+  },
   plugins: [
     "expo-router",
+    "expo-dev-client",
+    [
+      "expo-notifications",
+      {
+        icon: "./assets/images/icon.png",
+        color: "#0D5A52",
+        sounds: [],
+      },
+    ],
     [
       "expo-splash-screen",
       {

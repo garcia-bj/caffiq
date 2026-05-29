@@ -12,6 +12,19 @@ import { productosService, type ProductoPublico } from "@/frontend/services/prod
 import { personalizacionesService, type Personalizacion } from "@/frontend/services/personalizaciones.service";
 import { PersonalizacionModal } from "@/frontend/components/PersonalizacionModal";
 
+function estadoCalc(apertura?: string, cierre?: string): "open" | "warn" | null {
+  if (!apertura || !cierre) return "open";
+  const now = new Date();
+  const [ah, am] = apertura.split(":").map(Number);
+  const [ch, cm] = cierre.split(":").map(Number);
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const aMin = ah * 60 + am;
+  const cMin = ch * 60 + cm;
+  if (nowMin < aMin || nowMin >= cMin) return null;
+  if (cMin - nowMin <= 30) return "warn";
+  return "open";
+}
+
 const D = {
   bg:         "#EDF7F4",
   header:     "#0D5A52",
@@ -123,11 +136,14 @@ function ProductoCard({
 export default function SucursalMenuScreen() {
   const {
     id: sucursal_id, cafeteria_id, cafeteria_nombre, sucursal_nombre,
+    horario_apertura, horario_cierre,
   } = useLocalSearchParams<{
     id: string;
     cafeteria_id: string;
     cafeteria_nombre: string;
     sucursal_nombre: string;
+    horario_apertura?: string;
+    horario_cierre?: string;
   }>();
 
   const { token }   = useAuth();
@@ -142,12 +158,12 @@ export default function SucursalMenuScreen() {
   const [productoSeleccionado, setProductoSeleccionado] = useState<ProductoPublico | null>(null);
 
   const cargar = useCallback(async () => {
-    if (!token || !cafeteria_id) return;
+    if (!token || !cafeteria_id || !sucursal_id) return;
     setLoading(true);
     try {
       const [{ productos: data }, { personalizaciones: pers }] = await Promise.all([
-        productosService.listar(token, cafeteria_id),
-        personalizacionesService.listar(token, cafeteria_id),
+        productosService.listarPorSucursal(token, cafeteria_id, sucursal_id),
+        personalizacionesService.listar(token, cafeteria_id, sucursal_id),
       ]);
       setProductos(data);
       setPersonalizaciones(pers);
@@ -157,9 +173,14 @@ export default function SucursalMenuScreen() {
     } finally {
       setLoading(false);
     }
-  }, [token, cafeteria_id]);
+  }, [token, cafeteria_id, sucursal_id]);
 
   useEffect(() => { cargar(); }, [cargar]);
+
+  const estadoSucursal = estadoCalc(
+    horario_apertura ?? undefined,
+    horario_cierre   ?? undefined,
+  );
 
   const getCartQuantity = (productoId: string) =>
     items.filter((i) => i.producto.id === productoId).reduce((s, i) => s + i.cantidad, 0);
@@ -244,10 +265,35 @@ export default function SucursalMenuScreen() {
           <Ionicons name="location" size={13} color={D.accent} />
           <Text style={styles.sucursalNombre}>{sucursal_nombre ?? ""}</Text>
         </View>
+        {horario_apertura && horario_cierre ? (
+          <View style={styles.horarioRow}>
+            <Ionicons name="time-outline" size={12} color="rgba(255,255,255,0.6)" />
+            <Text style={styles.horarioTxt}>{horario_apertura} – {horario_cierre}</Text>
+          </View>
+        ) : null}
       </View>
 
       {/* ── Contenido ─────────────────────────────────────────────── */}
-      {loading ? (
+      {estadoSucursal === null ? (
+        <View style={styles.cerradoContainer}>
+          <Text style={styles.cerradoIcon}>🔒</Text>
+          <Text style={styles.cerradoTitulo}>Sucursal cerrada</Text>
+          <Text style={styles.cerradoDesc}>
+            Esta sucursal no está recibiendo pedidos en este momento.
+          </Text>
+          {horario_apertura && horario_cierre ? (
+            <View style={styles.cerradoHorario}>
+              <Ionicons name="time-outline" size={14} color={D.secondary} />
+              <Text style={styles.cerradoHorarioTxt}>
+                Horario: {horario_apertura} – {horario_cierre}
+              </Text>
+            </View>
+          ) : null}
+          <TouchableOpacity style={styles.retryBtn} onPress={() => router.back()}>
+            <Text style={styles.retryText}>Volver</Text>
+          </TouchableOpacity>
+        </View>
+      ) : loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={D.accent} />
         </View>
@@ -259,25 +305,33 @@ export default function SucursalMenuScreen() {
           </TouchableOpacity>
         </View>
       ) : (
-        <FlatList
-          data={productos}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          numColumns={2}
-          columnWrapperStyle={styles.row}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View style={styles.center}>
-              <Text style={{ fontSize: 40 }}>☕</Text>
-              <Text style={styles.emptyText}>No hay productos disponibles</Text>
+        <>
+          {estadoSucursal === "warn" ? (
+            <View style={styles.warnBanner}>
+              <Ionicons name="time-outline" size={14} color="#B45309" />
+              <Text style={styles.warnBannerTxt}>La sucursal cierra pronto</Text>
             </View>
-          }
-        />
+          ) : null}
+          <FlatList
+            data={productos}
+            keyExtractor={(item) => item.id}
+            renderItem={renderItem}
+            numColumns={2}
+            columnWrapperStyle={styles.row}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            ListEmptyComponent={
+              <View style={styles.center}>
+                <Text style={{ fontSize: 40 }}>☕</Text>
+                <Text style={styles.emptyText}>No hay productos disponibles</Text>
+              </View>
+            }
+          />
+        </>
       )}
 
       {/* ── Barra flotante "Ver carrito" cuando hay ítems ─────────── */}
-      {cantidad_total > 0 && cafeteria_id === cartCafId ? (
+      {estadoSucursal !== null && cantidad_total > 0 && cafeteria_id === cartCafId ? (
         <TouchableOpacity style={styles.floatingCart} onPress={irAlCarrito} activeOpacity={0.9}>
           <View style={styles.floatingLeft}>
             <View style={styles.floatingBadge}>
@@ -332,8 +386,10 @@ const styles = StyleSheet.create({
 
   titleBlock:      { backgroundColor: D.header, paddingHorizontal: 18, paddingBottom: 20, paddingTop: 4 },
   cafeteriaNombre: { fontSize: 24, fontWeight: "800", color: "#FFFFFF", marginBottom: 4 },
-  sucursalRow:     { flexDirection: "row", alignItems: "center", gap: 4 },
-  sucursalNombre:  { fontSize: 13, color: "#B0C4BA", fontWeight: "500" },
+  sucursalRow:  { flexDirection: "row", alignItems: "center", gap: 4 },
+  sucursalNombre: { fontSize: 13, color: "#B0C4BA", fontWeight: "500" },
+  horarioRow:   { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 4 },
+  horarioTxt:   { fontSize: 12, color: "rgba(255,255,255,0.6)", fontWeight: "500" },
 
   listContent: { paddingHorizontal: 12, paddingBottom: 100 },
   row:         { justifyContent: "space-between", marginBottom: 12 },
@@ -380,6 +436,14 @@ const styles = StyleSheet.create({
   },
   addBtnBadgeText: { fontSize: 8, fontWeight: "800", color: "#fff" },
 
+  cerradoContainer: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, paddingHorizontal: 32 },
+  cerradoIcon:      { fontSize: 56 },
+  cerradoTitulo:    { fontSize: 22, fontWeight: "800", color: D.primary, textAlign: "center" },
+  cerradoDesc:      { fontSize: 14, color: D.secondary, textAlign: "center", lineHeight: 20 },
+  cerradoHorario:   { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: D.surface, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
+  cerradoHorarioTxt:{ fontSize: 13, color: D.secondary, fontWeight: "600" },
+  warnBanner: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#FFF8E1", paddingHorizontal: 16, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: "#FFE082" },
+  warnBannerTxt: { fontSize: 12, color: "#B45309", fontWeight: "600" },
   center:    { flex: 1, alignItems: "center", justifyContent: "center", gap: 10, paddingTop: 60 },
   errorText: { color: "#D32F2F", fontSize: 13, textAlign: "center", paddingHorizontal: 20 },
   retryBtn:  { backgroundColor: D.accent, borderRadius: 10, paddingHorizontal: 20, paddingVertical: 10 },

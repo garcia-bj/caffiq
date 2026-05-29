@@ -6,11 +6,12 @@ const repo = new SupabasePersonalizacionRepository();
 
 export const personalizacionesController = {
 
-  // GET /api/cafeterias/:cafeteria_id/personalizaciones
+  // GET /api/cafeterias/:cafeteria_id/personalizaciones?sucursal_id=xxx
   async listar(req: Request, res: Response, next: NextFunction) {
     try {
       const { cafeteria_id } = req.params;
-      const personalizaciones = await repo.listar(cafeteria_id);
+      const sucursal_id = req.query.sucursal_id as string | undefined;
+      const personalizaciones = await repo.listar(cafeteria_id, sucursal_id);
       res.status(200).json({ personalizaciones });
     } catch (err) { next(err); }
   },
@@ -19,9 +20,9 @@ export const personalizacionesController = {
   async crear(req: Request, res: Response, next: NextFunction) {
     try {
       const { cafeteria_id } = req.params;
-      const { nombre, requerido, orden } = req.body;
+      const { nombre, requerido, orden, sucursal_id } = req.body;
       if (!nombre?.trim()) throw new AppError("El nombre es requerido", 400);
-      const personalizacion = await repo.crear(cafeteria_id, { nombre: nombre.trim(), requerido, orden });
+      const personalizacion = await repo.crear(cafeteria_id, { nombre: nombre.trim(), requerido, orden, sucursal_id: sucursal_id ?? null });
       res.status(201).json({ personalizacion });
     } catch (err) { next(err); }
   },

@@ -1,4 +1,4 @@
-import { NavbarLateral } from "@/frontend/components/navbar-lateral";
+import { useNavbar } from "@/frontend/context/NavbarContext";
 import { LocationPickerButton } from "@/frontend/components/LocationPickerButton";
 import * as ImagePicker from "expo-image-picker";
 import React, { useState } from "react";
@@ -21,10 +21,12 @@ import { subirImagenCloudinary } from "@/frontend/services/cloudinary.service";
 
 export default function AgregarSucursal() {
   const { token, usuario } = useAuth();
-  const [navbarVisible, setNavbarVisible] = useState(false);
+  const { open: openNavbar } = useNavbar();
   const [nombre, setNombre] = useState("");
   const [direccion, setDireccion] = useState("");
   const [ciudad, setCiudad] = useState("");
+  const [horarioApertura, setHorarioApertura] = useState("");
+  const [horarioCierre, setHorarioCierre] = useState("");
   const [latitud, setLatitud] = useState<number | null>(null);
   const [longitud, setLongitud] = useState<number | null>(null);
   const [imagen, setImagen] = useState<string | null>(null);
@@ -38,9 +40,7 @@ export default function AgregarSucursal() {
       return;
     }
     const resultado = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [16, 9],
+      mediaTypes: ["images"] as any,
       quality: 0.8,
     });
     if (!resultado.canceled) setImagen(resultado.assets[0].uri);
@@ -81,6 +81,8 @@ export default function AgregarSucursal() {
         nombre,
         direccion,
         ciudad,
+        horario_apertura: horarioApertura.trim() || undefined,
+        horario_cierre:   horarioCierre.trim()   || undefined,
         imagen_url,
         latitud,
         longitud,
@@ -90,6 +92,8 @@ export default function AgregarSucursal() {
       setNombre("");
       setDireccion("");
       setCiudad("");
+      setHorarioApertura("");
+      setHorarioCierre("");
       setLatitud(null);
       setLongitud(null);
       setImagen(null);
@@ -105,7 +109,7 @@ export default function AgregarSucursal() {
       <StatusBar barStyle="light-content" backgroundColor="#0D5A52" />
 
       <View style={styles.header}>
-        <TouchableOpacity style={styles.menuBtn} onPress={() => setNavbarVisible(true)}>
+        <TouchableOpacity style={styles.menuBtn} onPress={openNavbar}>
           <View style={styles.menuLine} />
           <View style={styles.menuLine} />
           <View style={styles.menuLine} />
@@ -150,6 +154,40 @@ export default function AgregarSucursal() {
             placeholder="Ej: Cochabamba"
             placeholderTextColor="#aaa"
           />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Horario de atención <Text style={styles.labelOpcional}>(opcional)</Text></Text>
+          <Text style={styles.labelHint}>Formato 24h — ejemplo: 08:00 · 20:30</Text>
+          <View style={styles.horarioRow}>
+            <View style={styles.horarioField}>
+              <Text style={styles.horarioLabel}>Apertura</Text>
+              <TextInput
+                style={styles.input}
+                value={horarioApertura}
+                onChangeText={setHorarioApertura}
+                placeholder="08:00"
+                placeholderTextColor="#aaa"
+                keyboardType="numeric"
+                maxLength={5}
+              />
+            </View>
+            <View style={styles.horarioSep}>
+              <Text style={styles.horarioSepTxt}>→</Text>
+            </View>
+            <View style={styles.horarioField}>
+              <Text style={styles.horarioLabel}>Cierre</Text>
+              <TextInput
+                style={styles.input}
+                value={horarioCierre}
+                onChangeText={setHorarioCierre}
+                placeholder="20:00"
+                placeholderTextColor="#aaa"
+                keyboardType="numeric"
+                maxLength={5}
+              />
+            </View>
+          </View>
         </View>
 
         <View style={styles.inputGroup}>
@@ -201,6 +239,9 @@ export default function AgregarSucursal() {
             <View style={styles.modalResumen}>
               <Text style={styles.resumenItem}>Dirección: {direccion}</Text>
               <Text style={styles.resumenItem}>
+                Horario: {horarioApertura && horarioCierre ? `${horarioApertura} – ${horarioCierre}` : "Sin especificar"}
+              </Text>
+              <Text style={styles.resumenItem}>
                 Ubicación: {latitud != null ? `${latitud.toFixed(5)}, ${longitud!.toFixed(5)}` : "Sin marcar"}
               </Text>
               <Text style={styles.resumenItem}>Imagen: {imagen ? "Seleccionada ✓" : "Sin imagen"}</Text>
@@ -217,7 +258,6 @@ export default function AgregarSucursal() {
         </View>
       </Modal>
 
-      <NavbarLateral visible={navbarVisible} onClose={() => setNavbarVisible(false)} />
     </SafeAreaView>
   );
 }
@@ -239,7 +279,7 @@ const styles = StyleSheet.create({
   },
   logoEmoji: { fontSize: 20 },
   scroll: { flex: 1 },
-  scrollContent: { padding: 20, paddingBottom: 40 },
+  scrollContent: { padding: 20, paddingBottom: 84 },
   pageTitle: { fontSize: 24, fontWeight: "700", color: "#2C1819", marginBottom: 24, fontStyle: "italic" },
   inputGroup: { marginBottom: 16 },
   label: { fontSize: 14, color: "#2C1819", marginBottom: 4, fontWeight: "500" },
@@ -271,6 +311,11 @@ const styles = StyleSheet.create({
     paddingVertical: 16, alignItems: "center", marginTop: 24,
   },
   btnText: { color: "#fff", fontSize: 17, fontWeight: "700" },
+  horarioRow:   { flexDirection: "row", alignItems: "flex-end", gap: 8 },
+  horarioField: { flex: 1 },
+  horarioLabel: { fontSize: 11, color: "#7a9a8a", fontWeight: "600", marginBottom: 4 },
+  horarioSep:   { paddingBottom: 12, alignItems: "center" },
+  horarioSepTxt:{ fontSize: 16, color: "#6FA58B", fontWeight: "700" },
   modalOverlay: {
     flex: 1, backgroundColor: "rgba(0,0,0,0.5)",
     alignItems: "center", justifyContent: "center",

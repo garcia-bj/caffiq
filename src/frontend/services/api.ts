@@ -1,4 +1,5 @@
-const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
+import { API_BASE } from "@/frontend/lib/apiUrl";
+const API_URL = API_BASE;
 
 export const api = async (endpoint: string, options?: RequestInit) => {
   const res = await fetch(`${API_URL}${endpoint}`, {

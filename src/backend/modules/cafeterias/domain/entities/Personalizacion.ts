@@ -9,6 +9,7 @@ export interface OpcionPersonalizacion {
 export interface PersonalizacionEntity {
   id: string;
   cafeteria_id: string;
+  sucursal_id: string | null;
   nombre: string;
   requerido: boolean;
   orden: number;
@@ -21,6 +22,7 @@ export interface PersonalizacionInput {
   nombre: string;
   requerido?: boolean;
   orden?: number;
+  sucursal_id?: string | null;
 }
 
 export interface OpcionInput {

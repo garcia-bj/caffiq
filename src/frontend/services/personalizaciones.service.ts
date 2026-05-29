@@ -1,4 +1,5 @@
-const BASE_URL = `${process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000"}/api`;
+import { API_BASE } from "@/frontend/lib/apiUrl";
+const BASE_URL = `${API_BASE}/api`;
 
 export interface OpcionPersonalizacion {
   id: string;
@@ -11,6 +12,7 @@ export interface OpcionPersonalizacion {
 export interface Personalizacion {
   id: string;
   cafeteria_id: string;
+  sucursal_id: string | null;
   nombre: string;
   requerido: boolean;
   orden: number;
@@ -34,15 +36,17 @@ const authFetch = async <T>(path: string, token: string, options: RequestInit = 
 };
 
 export const personalizacionesService = {
-  listar: (token: string, cafeteria_id: string) =>
-    authFetch<{ personalizaciones: Personalizacion[] }>(
-      `/cafeterias/${cafeteria_id}/personalizaciones`, token,
-    ),
+  listar: (token: string, cafeteria_id: string, sucursal_id?: string) => {
+    const qs = sucursal_id ? `?sucursal_id=${sucursal_id}` : "";
+    return authFetch<{ personalizaciones: Personalizacion[] }>(
+      `/cafeterias/${cafeteria_id}/personalizaciones${qs}`, token,
+    );
+  },
 
-  crear: (token: string, cafeteria_id: string, nombre: string, requerido: boolean) =>
+  crear: (token: string, cafeteria_id: string, nombre: string, requerido: boolean, sucursal_id?: string) =>
     authFetch<{ personalizacion: Personalizacion }>(
       `/cafeterias/${cafeteria_id}/personalizaciones`, token,
-      { method: "POST", body: JSON.stringify({ nombre, requerido }) },
+      { method: "POST", body: JSON.stringify({ nombre, requerido, sucursal_id: sucursal_id ?? null }) },
     ),
 
   actualizar: (token: string, cafeteria_id: string, id: string, datos: { nombre?: string; requerido?: boolean }) =>

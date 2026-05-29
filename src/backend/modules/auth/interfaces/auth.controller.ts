@@ -8,7 +8,7 @@ import { SupabaseVerificacionRepository } from "../infrastructure/repositories/S
 import { enviarWhatsApp } from "../infrastructure/services/WhatsAppService";
 
 import { RegisterUser } from "../application/use-cases/RegisterUser";
-import { LoginUser } from "../application/use-cases/LoginUser";
+import { LoginUser, generarToken, toPublico } from "../application/use-cases/LoginUser";
 import { VerifyPhone } from "../application/use-cases/VerifyPhone";
 import { ResendOtp } from "../application/use-cases/ResendOtp";
 import { GoogleLogin } from "../application/use-cases/GoogleLogin";
@@ -72,6 +72,45 @@ export const authController = {
     } catch (err) { next(err); }
   },
 
+  // POST /api/auth/google/token — verifica el access_token de Supabase y emite JWT de Caffiq
+  async googleToken(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { access_token, rol } = req.body as { access_token?: string; rol?: string };
+      if (!access_token) throw new AppError("access_token requerido", 400);
+      if (!rol || !["cliente", "admin"].includes(rol)) throw new AppError("Rol invalido", 400);
+
+      const { data, error } = await supabaseAdmin.auth.getUser(access_token);
+      if (error || !data.user) throw new AppError("Token de Google invalido o expirado", 401);
+
+      const googleUser = data.user;
+      const resultado = await googleLogin.execute({
+        google_id:    googleUser.id,
+        nom_completo: googleUser.user_metadata?.full_name ?? googleUser.email ?? "",
+        email:        googleUser.email ?? "",
+        rol:          rol as "cliente" | "admin",
+      });
+
+      res.status(200).json(resultado);
+    } catch (err) { next(err); }
+  },
+
+  // GET /api/auth/google/relay — recibe el code de Supabase y lo reenvía a la app via deep link
+  async googleRelay(req: Request, res: Response, next: NextFunction) {
+    try {
+      const code   = req.query.code as string | undefined;
+      const expRaw = req.query.exp  as string | undefined;
+
+      if (!code) {
+        const msg = (req.query.error_description as string) ?? "Codigo de autorizacion no recibido";
+        throw new AppError(msg, 400);
+      }
+
+      const appUrl = decodeURIComponent(expRaw ?? "caffiq://auth/callback");
+      const params = new URLSearchParams({ code });
+      res.redirect(`${appUrl}?${params.toString()}`);
+    } catch (err) { next(err); }
+  },
+
   // GET /api/auth/google?rol=cliente|admin&platform=mobile&scheme=caffiq
   async googleRedirect(req: Request, res: Response, next: NextFunction) {
     try {
@@ -127,6 +166,45 @@ export const authController = {
   async me(req: Request, res: Response, next: NextFunction) {
     try {
       res.status(200).json({ usuario: req.user });
+    } catch (err) { next(err); }
+  },
+
+  // POST /api/auth/setup-cafeteria — solo admin Google sin cafetería
+  async setupCafeteria(req: Request, res: Response, next: NextFunction) {
+    try {
+      const admin_id = req.user!.id;
+      if (req.user!.rol !== "admin") throw new AppError("Solo administradores", 403);
+
+      const { nom_cafeteria, ciudad, descripcion } = req.body;
+      if (!nom_cafeteria?.trim()) throw new AppError("El nombre de la cafetería es requerido", 400);
+      if (!ciudad?.trim())        throw new AppError("La ciudad es requerida", 400);
+
+      const existing = await authRepo.buscarCafeteriaPorAdmin(admin_id);
+      if (existing) throw new AppError("Ya tienes una cafetería registrada", 400);
+
+      const admin     = await authRepo.buscarPorId(admin_id);
+      if (!admin) throw new AppError("Usuario no encontrado", 404);
+
+      const cafeteria = await authRepo.crearCafeteria(admin_id, {
+        nom_cafeteria: nom_cafeteria.trim(),
+        ciudad:        ciudad.trim(),
+        descripcion:   descripcion?.trim() ?? undefined,
+      });
+
+      res.status(201).json({
+        token:   generarToken(admin),
+        usuario: toPublico(admin, cafeteria.id),
+      });
+    } catch (err) { next(err); }
+  },
+
+  // PATCH /api/auth/push-token  — token: string activa, token: null desactiva
+  async savePushToken(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { token } = req.body;
+      if (token !== null && typeof token !== "string") throw new AppError("token debe ser string o null", 400);
+      await authRepo.guardarPushToken(req.user!.id, token ?? null);
+      res.status(200).json({ ok: true });
     } catch (err) { next(err); }
   },
 

@@ -1,4 +1,4 @@
-import { NavbarLateral } from "@/frontend/components/navbar-lateral";
+import { useNavbar } from "@/frontend/context/NavbarContext";
 import { useAuth } from "@/frontend/context/AuthContext";
 import { sucursalesService, type SucursalPublica } from "@/frontend/services/sucursales.service";
 import { productosService, type ProductoPublico } from "@/frontend/services/productos.service";
@@ -20,7 +20,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 export default function ModificarProductoMenu() {
   const router = useRouter();
   const { token, usuario } = useAuth();
-  const [navbarVisible, setNavbarVisible] = useState(false);
+  const { open: openNavbar } = useNavbar();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [sucursales, setSucursales] = useState<SucursalPublica[]>([]);
   const [cargandoLista, setCargandoLista] = useState(true);
@@ -80,7 +80,7 @@ export default function ModificarProductoMenu() {
       <StatusBar barStyle="light-content" backgroundColor="#0D5A52" />
 
       <View style={styles.header}>
-        <TouchableOpacity style={styles.menuBtn} onPress={() => setNavbarVisible(true)}>
+        <TouchableOpacity style={styles.menuBtn} onPress={openNavbar}>
           <View style={styles.menuLine} />
           <View style={styles.menuLine} />
           <View style={styles.menuLine} />
@@ -168,7 +168,6 @@ export default function ModificarProductoMenu() {
         )}
       </ScrollView>
 
-      <NavbarLateral visible={navbarVisible} onClose={() => setNavbarVisible(false)} />
     </SafeAreaView>
   );
 }
@@ -185,7 +184,7 @@ const styles = StyleSheet.create({
   logoContainer: { width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" },
   logoEmoji: { fontSize: 20 },
   scroll: { flex: 1 },
-  scrollContent: { padding: 20, paddingBottom: 40 },
+  scrollContent: { padding: 20, paddingBottom: 84 },
   pageTitle: { fontSize: 22, fontWeight: "700", color: "#2C1819", marginBottom: 16, fontStyle: "italic", textAlign: "center" },
   sectionTitle: { fontSize: 17, fontWeight: "700", color: "#0D5A52", marginBottom: 12 },
   inputGroup: { marginBottom: 16 },

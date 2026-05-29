@@ -6,7 +6,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
-import { NavbarLateral } from "@/frontend/components/navbar-lateral";
+import { useNavbar } from "@/frontend/context/NavbarContext";
 import { LocationPickerButton } from "@/frontend/components/LocationPickerButton";
 import { useAuth } from "@/frontend/context/AuthContext";
 import { sucursalesService, type SucursalPublica } from "@/frontend/services/sucursales.service";
@@ -14,7 +14,7 @@ import { subirImagenCloudinary } from "@/frontend/services/cloudinary.service";
 
 export default function ModificarSucursal() {
   const { token, usuario } = useAuth();
-  const [navbarVisible, setNavbarVisible] = useState(false);
+  const { open: openNavbar } = useNavbar();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [sucursales, setSucursales] = useState<SucursalPublica[]>([]);
   const [cargandoLista, setCargandoLista] = useState(true);
@@ -54,7 +54,7 @@ export default function ModificarSucursal() {
       return;
     }
     const resultado = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ["images"] as any,
       allowsEditing: true, aspect: [16, 9], quality: 0.8,
     });
     if (!resultado.canceled) setImagenActual(resultado.assets[0].uri);
@@ -103,7 +103,7 @@ export default function ModificarSucursal() {
       <StatusBar barStyle="light-content" backgroundColor="#0D5A52" />
 
       <View style={styles.header}>
-        <TouchableOpacity style={styles.menuBtn} onPress={() => setNavbarVisible(true)}>
+        <TouchableOpacity style={styles.menuBtn} onPress={openNavbar}>
           <View style={styles.menuLine} />
           <View style={styles.menuLine} />
           <View style={styles.menuLine} />
@@ -247,7 +247,6 @@ export default function ModificarSucursal() {
         </View>
       </Modal>
 
-      <NavbarLateral visible={navbarVisible} onClose={() => setNavbarVisible(false)} />
     </SafeAreaView>
   );
 }
@@ -269,7 +268,7 @@ const styles = StyleSheet.create({
   },
   logoEmoji: { fontSize: 20 },
   scroll: { flex: 1 },
-  scrollContent: { padding: 20, paddingBottom: 40 },
+  scrollContent: { padding: 20, paddingBottom: 84 },
   pageTitle: { fontSize: 24, fontWeight: "700", color: "#2C1819", marginBottom: 24, fontStyle: "italic" },
   inputGroup: { marginBottom: 16 },
   label: { fontSize: 14, color: "#2C1819", marginBottom: 4, fontWeight: "500" },

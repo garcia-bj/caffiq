@@ -9,7 +9,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/frontend/context/AuthContext";
 import { cafeteriasService } from "@/frontend/services/cafeterias.service";
 import { subirImagenCloudinary } from "@/frontend/services/cloudinary.service";
-import { NavbarLateral } from "@/frontend/components/navbar-lateral";
+import { useNavbar } from "@/frontend/context/NavbarContext";
 
 const D = {
   bg:      "#f5f0eb",
@@ -25,7 +25,7 @@ const D = {
 
 export default function QrPagoScreen() {
   const { token, usuario } = useAuth();
-  const [navbarVisible, setNavbarVisible] = useState(false);
+  const { open: openNavbar } = useNavbar();
   const [qrActual, setQrActual] = useState<string | null>(null);
   const [qrNuevo, setQrNuevo] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
@@ -52,7 +52,7 @@ export default function QrPagoScreen() {
       return;
     }
     const resultado = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ["images"] as any,
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.9,
@@ -116,7 +116,7 @@ export default function QrPagoScreen() {
       <StatusBar barStyle="light-content" backgroundColor={D.header} />
 
       <View style={styles.header}>
-        <TouchableOpacity style={styles.menuBtn} onPress={() => setNavbarVisible(true)}>
+        <TouchableOpacity style={styles.menuBtn} onPress={openNavbar}>
           <View style={styles.menuLine} />
           <View style={styles.menuLine} />
           <View style={styles.menuLine} />
@@ -193,7 +193,6 @@ export default function QrPagoScreen() {
         </ScrollView>
       )}
 
-      <NavbarLateral visible={navbarVisible} onClose={() => setNavbarVisible(false)} />
     </SafeAreaView>
   );
 }
@@ -215,7 +214,7 @@ const styles = StyleSheet.create({
   },
   logoEmoji: { fontSize: 20 },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
-  scroll: { padding: 20, paddingBottom: 48 },
+  scroll: { padding: 20, paddingBottom: 84 },
   pageTitle: {
     fontSize: 24, fontWeight: "700", color: D.label,
     marginBottom: 20, fontStyle: "italic",

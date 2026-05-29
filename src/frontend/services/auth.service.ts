@@ -1,12 +1,9 @@
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
+import { supabase } from "@/frontend/lib/supabase";
 
-const BASE_URL = `${process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000"}/api`;
-
-function getRedirectScheme(): string {
-  const url = Linking.createURL("/");
-  return url.split("://")[0] ?? "caffiq";
-}
+import { API_BASE } from "@/frontend/lib/apiUrl";
+const BASE_URL = `${API_BASE}/api`;
 
 type Rol = "cliente" | "admin";
 
@@ -24,17 +21,6 @@ export interface UsuarioPublico {
 interface AuthResponse {
   token: string;
   usuario: UsuarioPublico;
-}
-
-function parseRedirectUrl(url: string): Record<string, string> {
-  const params: Record<string, string> = {};
-  const idx = url.indexOf("?");
-  if (idx === -1) return params;
-  url.substring(idx + 1).split("&").forEach((pair) => {
-    const eq = pair.indexOf("=");
-    if (eq > 0) params[pair.substring(0, eq)] = decodeURIComponent(pair.substring(eq + 1));
-  });
-  return params;
 }
 
 interface GoogleLoginResult extends AuthResponse {
@@ -108,26 +94,28 @@ export const authService = {
       headers: { Authorization: `Bearer ${token}` },
     }),
 
-  googleLogin: async (rol: "cliente" | "admin"): Promise<GoogleLoginResult> => {
-    const scheme = getRedirectScheme();
-    const redirectUrl = `${scheme}://auth/callback`;
-    const result = await WebBrowser.openAuthSessionAsync(
-      `${BASE_URL}/auth/google?rol=${rol}&platform=mobile&scheme=${encodeURIComponent(scheme)}`,
-      redirectUrl,
-    );
-    if (result.type !== "success") {
-      throw new Error("Inicio de sesion con Google cancelado");
-    }
-    const params = parseRedirectUrl(result.url);
-    const token = params.token;
-    const usuarioRaw = params.usuario;
-    if (!token || !usuarioRaw) {
-      throw new Error("No se recibieron los datos de autenticacion");
-    }
-    return {
-      token,
-      usuario: JSON.parse(usuarioRaw) as UsuarioPublico,
-      necesita_telefono: params.necesita_telefono === "true",
-    };
+  // Flujo OAuth directo — el rol viaja en el deep link para que callback lo lea
+  googleLogin: async (rol: Rol): Promise<void> => {
+    const redirectTo = Linking.createURL("/auth/callback", { queryParams: { rol } });
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo, skipBrowserRedirect: true },
+    });
+    if (error || !data.url) throw new Error("Error generando URL de autenticacion con Google");
+    await WebBrowser.openBrowserAsync(data.url);
   },
+
+  setupCafeteria: (token: string, datos: { nom_cafeteria: string; ciudad: string; descripcion?: string }) =>
+    api<AuthResponse>("/auth/setup-cafeteria", {
+      method:  "POST",
+      body:    JSON.stringify(datos),
+      headers: { Authorization: `Bearer ${token}` },
+    }),
+
+  // Llamado desde app/auth/callback.tsx con el token de Supabase
+  exchangeGoogleToken: (access_token: string, rol: Rol) =>
+    api<GoogleLoginResult>("/auth/google/token", {
+      method: "POST",
+      body: JSON.stringify({ access_token, rol }),
+    }),
 };

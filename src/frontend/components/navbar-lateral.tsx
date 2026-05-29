@@ -18,6 +18,15 @@ interface NavbarLateralProps {
 
 const MENU_SECTIONS = [
   {
+    key: "inicio",
+    label: "Inicio",
+    icon: "home-outline" as const,
+    opciones: [
+      { label: "Dashboard",  ruta: "/(tabs)/cafeterias", icon: "grid-outline" as const },
+      { label: "Mi Perfil",  ruta: "/(tabs)/perfil",     icon: "person-outline" as const },
+    ],
+  },
+  {
     key: "sucursales",
     label: "Sucursales",
     icon: "location-outline" as const,

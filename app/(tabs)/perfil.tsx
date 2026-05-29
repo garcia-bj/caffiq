@@ -1,10 +1,16 @@
-import { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Platform, TextInput, Keyboard } from "react-native";
+import { useState, useEffect } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Platform, TextInput, Keyboard, Switch } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import Constants from "expo-constants";
 import { useAuth } from "@/frontend/context/AuthContext";
 import { authService } from "@/frontend/services/auth.service";
+import { obtenerExpoPushToken } from "@/frontend/services/notifications.service";
+
+const esExpoGo = Constants.appOwnership === "expo";
+import { API_BASE } from "@/frontend/lib/apiUrl";
+const BASE_URL = `${API_BASE}/api`;
 
 const D = {
   bg:         "#EDF7F4",
@@ -93,6 +99,53 @@ export default function PerfilScreen() {
   const isAdmin = usuario?.rol === "admin";
   const inicial = usuario?.nom_completo?.charAt(0).toUpperCase() ?? "U";
   const joinDate = usuario?.created_at ? new Date(usuario.created_at).toLocaleDateString("es-MX", { year: "numeric", month: "long", day: "numeric" }) : "—";
+
+  // ── Notificaciones (solo admin, solo dev build) ──────────────────────────────
+  const [notifActivas,  setNotifActivas]  = useState(false);
+  const [notifCargando, setNotifCargando] = useState(false);
+
+  useEffect(() => {
+    if (!isAdmin || esExpoGo) return;
+    (async () => {
+      const Notifications = require("expo-notifications");
+      const { status } = await Notifications.getPermissionsAsync();
+      setNotifActivas(status === "granted");
+    })();
+  }, [isAdmin]);
+
+  const toggleNotificaciones = async (activar: boolean) => {
+    if (!token) return;
+    setNotifCargando(true);
+    try {
+      if (activar) {
+        const pushToken = await obtenerExpoPushToken();
+        if (!pushToken) {
+          Alert.alert(
+            "Permisos denegados",
+            "Ve a Ajustes → Caffiq → Notificaciones y actívalas manualmente.",
+          );
+          return;
+        }
+        await fetch(`${BASE_URL}/auth/push-token`, {
+          method:  "PATCH",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body:    JSON.stringify({ token: pushToken }),
+        });
+        setNotifActivas(true);
+      } else {
+        await fetch(`${BASE_URL}/auth/push-token`, {
+          method:  "PATCH",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body:    JSON.stringify({ token: null }),
+        });
+        setNotifActivas(false);
+      }
+    } catch {
+      Alert.alert("Error", "No se pudieron actualizar las notificaciones.");
+    } finally {
+      setNotifCargando(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -183,6 +236,59 @@ export default function PerfilScreen() {
           </View>
         )}
 
+        {/* ── Notificaciones (solo admin) ── */}
+        {isAdmin && !editMode && (
+          <View style={styles.card}>
+            <View style={styles.cardTitle}>
+              <Text style={styles.cardTitleText}>NOTIFICACIONES</Text>
+              {notifActivas && !esExpoGo && (
+                <View style={styles.notifActivaBadge}>
+                  <View style={styles.notifDot} />
+                  <Text style={styles.notifActivaText}>Activas</Text>
+                </View>
+              )}
+            </View>
+
+            {esExpoGo ? (
+              <View style={styles.notifExpoGoRow}>
+                <Ionicons name="information-circle-outline" size={18} color={D.secondary} />
+                <Text style={styles.notifExpoGoText}>
+                  Las notificaciones push requieren un{" "}
+                  <Text style={{ fontWeight: "700" }}>development build</Text>.
+                  No están disponibles en Expo Go.
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.notifRow}>
+                <View style={styles.iconWrap}>
+                  <Ionicons
+                    name={notifActivas ? "notifications" : "notifications-off-outline"}
+                    size={17}
+                    color={notifActivas ? D.accent : D.secondary}
+                  />
+                </View>
+                <View style={styles.notifInfo}>
+                  <Text style={styles.notifLabel}>Nuevos pedidos</Text>
+                  <Text style={styles.notifSub}>
+                    {notifActivas
+                      ? "Recibirás una notificación cada vez que llegue un pedido"
+                      : "Activa para recibir alertas de nuevos pedidos"}
+                  </Text>
+                </View>
+                {notifCargando
+                  ? <ActivityIndicator size="small" color={D.accent} />
+                  : <Switch
+                      value={notifActivas}
+                      onValueChange={toggleNotificaciones}
+                      trackColor={{ false: D.cardBorder, true: D.accent }}
+                      thumbColor="#fff"
+                    />
+                }
+              </View>
+            )}
+          </View>
+        )}
+
         {/* ── Logout ── */}
         <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} disabled={loggingOut} activeOpacity={0.85}>
           {loggingOut
@@ -235,6 +341,15 @@ const styles = StyleSheet.create({
   optRow:  { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
   optText: { fontSize: 14, fontWeight: "600", color: D.primary },
 
+  notifActivaBadge: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "#E8F5E9", borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
+  notifDot:         { width: 7, height: 7, borderRadius: 4, backgroundColor: "#2E7D32" },
+  notifActivaText:  { fontSize: 10, fontWeight: "700", color: "#2E7D32" },
+  notifRow:         { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
+  notifInfo:        { flex: 1 },
+  notifLabel:       { fontSize: 14, fontWeight: "600", color: D.primary },
+  notifSub:         { fontSize: 11, color: D.secondary, marginTop: 2, lineHeight: 15 },
+  notifExpoGoRow:   { flexDirection: "row", alignItems: "flex-start", gap: 10, paddingHorizontal: 16, paddingVertical: 14 },
+  notifExpoGoText:  { flex: 1, fontSize: 12, color: D.secondary, lineHeight: 18 },
   logoutBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, marginHorizontal: 16, marginTop: 14, paddingVertical: 16, backgroundColor: D.dangerBg, borderRadius: 16, borderWidth: 1, borderColor: D.dangerBorder },
   logoutText:{ fontSize: 15, fontWeight: "700", color: D.danger },
   version:   { textAlign: "center", fontSize: 11, color: D.secondary, marginTop: 20 },

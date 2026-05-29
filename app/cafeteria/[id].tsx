@@ -75,6 +75,8 @@ function SucursalItem({
         cafeteria_nombre:   nomCafeteria,
         sucursal_nombre:    item.nombre,
         sucursal_direccion: item.direccion,
+        horario_apertura:   item.horario_apertura  ?? undefined,
+        horario_cierre:     item.horario_cierre    ?? undefined,
         latitud:            item.latitud  != null ? String(item.latitud)  : undefined,
         longitud:           item.longitud != null ? String(item.longitud) : undefined,
       },

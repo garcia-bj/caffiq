@@ -1,4 +1,5 @@
-const BASE_URL = `${process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000"}/api`;
+import { API_BASE } from "@/frontend/lib/apiUrl";
+const BASE_URL = `${API_BASE}/api`;
 
 export type EstadoPedido = "pendiente" | "aprobado" | "rechazado";
 export type TipoPedido   = "llevar" | "local";
