@@ -13,14 +13,14 @@ export const pedidosController = {
   async crear(req: Request, res: Response, next: NextFunction) {
     try {
       const cliente_id = req.user!.id;
-      const { cafeteria_id, sucursal_id, items, total, tipo_pedido, comprobante_url } = req.body;
+      const { cafeteria_id, sucursal_id, items, total, tipo_pedido, comprobante_url, hora_recogida } = req.body;
 
       if (!cafeteria_id || !sucursal_id) throw new AppError("cafeteria_id y sucursal_id son requeridos", 400);
-      if (!items?.length)                throw new AppError("El pedido debe tener al menos un ítem", 400);
+      if (!items?.length)                throw new AppError("El pedido debe tener al menos un item", 400);
       if (!total || total <= 0)          throw new AppError("El total debe ser mayor a 0", 400);
       if (!["llevar", "local"].includes(tipo_pedido)) throw new AppError("tipo_pedido debe ser 'llevar' o 'local'", 400);
 
-      const pedido = await repo.crear({ cliente_id, cafeteria_id, sucursal_id, items, total, tipo_pedido: tipo_pedido as TipoPedido, comprobante_url });
+      const pedido = await repo.crear({ cliente_id, cafeteria_id, sucursal_id, items, total, tipo_pedido: tipo_pedido as TipoPedido, comprobante_url, hora_recogida });
       res.status(201).json({ pedido });
 
       // Notificar al admin — no-fatal, se ejecuta después de responder
@@ -50,14 +50,14 @@ export const pedidosController = {
   async actualizarEstado(req: Request, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      const { estado, cafeteria_id } = req.body;
+      const { estado, cafeteria_id, motivo_rechazo } = req.body;
 
       if (!["aprobado", "rechazado"].includes(estado)) {
         throw new AppError("Estado debe ser 'aprobado' o 'rechazado'", 400);
       }
       if (!cafeteria_id) throw new AppError("cafeteria_id es requerido", 400);
 
-      const pedido = await repo.actualizarEstado(id, cafeteria_id, estado);
+      const pedido = await repo.actualizarEstado(id, cafeteria_id, estado, motivo_rechazo);
       res.status(200).json({ pedido });
     } catch (err) { next(err); }
   },

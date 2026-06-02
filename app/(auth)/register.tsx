@@ -418,7 +418,7 @@ export default function RegisterScreen() {
       setLoading(true);
       const payload: Parameters<typeof authService.register>[0] = {
         nom_completo: nomCompleto.trim(),
-        nom_usuario: nomUsuario.trim(),
+        nom_usuario: nomUsuario.trim().toLowerCase(),
         num_telefono: `${pais.codigo}${telefono.trim().replace(/\s|-/g, "")}`,
         password,
         rol,

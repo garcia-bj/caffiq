@@ -23,6 +23,9 @@ export interface IAuthRepository {
   marcarTelefonoVerificado(id: string): Promise<void>;
   buscarCafeteriaPorAdmin(admin_id: string): Promise<CafeteriaEntity | null>;
   actualizarPerfil(id: string, datos: { nom_completo?: string; num_telefono?: string }): Promise<UsuarioEntity>;
+  actualizarPassword(id: string, password_hash: string): Promise<void>;
+  existeTelefonoEnOtroUsuario(telefono: string, excludeId: string): Promise<boolean>;
+  guardarPushToken(id: string, token: string | null): Promise<void>;
   upsertGoogle(datos: {
     nom_usuario: string;
     nom_completo: string;

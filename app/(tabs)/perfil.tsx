@@ -126,6 +126,13 @@ export default function PerfilScreen() {
           );
           return;
         }
+        if (pushToken === "FIREBASE_NOT_CONFIGURED") {
+          Alert.alert(
+            "Configuración pendiente",
+            "Las notificaciones push requieren configurar Firebase. Consulta la guía de configuración del proyecto.",
+          );
+          return;
+        }
         await fetch(`${BASE_URL}/auth/push-token`, {
           method:  "PATCH",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
@@ -228,7 +235,7 @@ export default function PerfilScreen() {
               <Ionicons name="chevron-forward" size={15} color={D.secondary} style={{ marginLeft: "auto" }} />
             </TouchableOpacity>
             <View style={styles.divider} />
-            <TouchableOpacity style={styles.optRow} onPress={() => Alert.alert("Próximamente", "Ayuda en desarrollo.")}>
+            <TouchableOpacity style={styles.optRow} onPress={() => router.push("/ayuda" as never)}>
               <View style={styles.iconWrap}><Ionicons name="help-circle-outline" size={17} color={D.accent} /></View>
               <Text style={styles.optText}>Ayuda y soporte</Text>
               <Ionicons name="chevron-forward" size={15} color={D.secondary} style={{ marginLeft: "auto" }} />

@@ -11,10 +11,12 @@ import { LocationPickerButton } from "@/frontend/components/LocationPickerButton
 import { useAuth } from "@/frontend/context/AuthContext";
 import { sucursalesService, type SucursalPublica } from "@/frontend/services/sucursales.service";
 import { subirImagenCloudinary } from "@/frontend/services/cloudinary.service";
+import { useResponsive } from "@/frontend/hooks/use-responsive";
 
 export default function ModificarSucursal() {
   const { token, usuario } = useAuth();
   const { open: openNavbar } = useNavbar();
+  const { fs } = useResponsive();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [sucursales, setSucursales] = useState<SucursalPublica[]>([]);
   const [cargandoLista, setCargandoLista] = useState(true);
@@ -198,7 +200,7 @@ export default function ModificarSucursal() {
             </View>
           ) : (
             <TouchableOpacity style={styles.uploadBox} onPress={cambiarImagen}>
-              <Text style={styles.uploadIcon}>⬆</Text>
+              <Text style={[styles.uploadIcon, { fontSize: fs(26) }]}>⬆</Text>
               <Text style={styles.uploadText}>Coloca un archivo aquí</Text>
               <Text style={styles.uploadSubtext}>Toca para abrir la galería</Text>
             </TouchableOpacity>

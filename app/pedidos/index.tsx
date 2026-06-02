@@ -1,8 +1,13 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   StatusBar, ActivityIndicator, Alert, Image, RefreshControl, Modal,
+  TextInput, KeyboardAvoidingView, Platform, LayoutAnimation, UIManager,
 } from "react-native";
+
+if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/frontend/context/AuthContext";
@@ -47,6 +52,60 @@ function EstadoBadge({ estado }: { estado: EstadoPedido }) {
   );
 }
 
+function AdminItemRow({ item }: { item: { cantidad: number; nombre: string; precio_unitario: number; personalizaciones: Array<{ nombre?: string; opcion: string; precio_adicional?: number }>; tipo_pedido?: string } }) {
+  const [expandido, setExpandido] = useState(false);
+  const tienePers = item.personalizaciones.length > 0;
+
+  const toggle = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandido((v) => !v);
+  };
+
+  return (
+    <View style={styles.adminItemWrap}>
+      <View style={styles.itemRow}>
+        <Text style={styles.itemCant}>{item.cantidad}×</Text>
+        <View style={styles.itemInfo}>
+          <Text style={styles.itemNombre}>{item.nombre}</Text>
+          {item.tipo_pedido && (
+            <View style={[styles.itemTipoBadge, item.tipo_pedido === "local" ? styles.itemTipoLocal : styles.itemTipoLlevar]}>
+              <Text style={styles.itemTipoText}>
+                {item.tipo_pedido === "local" ? "🪑 En el local" : "🛍️ Para llevar"}
+              </Text>
+            </View>
+          )}
+          {tienePers && (
+            <>
+              <TouchableOpacity style={styles.persToggle} onPress={toggle} activeOpacity={0.7}>
+                <Ionicons name="options-outline" size={11} color={D.hint} />
+                <Text style={styles.persToggleText}>
+                  {item.personalizaciones.length} opción{item.personalizaciones.length > 1 ? "es" : ""}
+                </Text>
+                <Ionicons name={expandido ? "chevron-up" : "chevron-down"} size={11} color={D.hint} />
+              </TouchableOpacity>
+              {expandido && (
+                <View style={styles.persLista}>
+                  {item.personalizaciones.map((p, j) => (
+                    <View key={j} style={styles.persItem}>
+                      <View style={styles.persDot} />
+                      {p.nombre && <Text style={styles.persNombre}>{p.nombre}:</Text>}
+                      <Text style={styles.persOpcion}>{p.opcion}</Text>
+                      {(p.precio_adicional ?? 0) > 0 && (
+                        <Text style={styles.persPrecio}>+Bs. {p.precio_adicional!.toFixed(2)}</Text>
+                      )}
+                    </View>
+                  ))}
+                </View>
+              )}
+            </>
+          )}
+        </View>
+        <Text style={styles.itemPrecio}>Bs. {(item.precio_unitario * item.cantidad).toFixed(2)}</Text>
+      </View>
+    </View>
+  );
+}
+
 function PedidoCard({
   pedido,
   onAprobar,
@@ -74,36 +133,42 @@ function PedidoCard({
       {/* Ítems */}
       <View style={styles.itemsList}>
         {pedido.items.map((item, i) => (
-          <View key={i} style={styles.itemRow}>
-            <Text style={styles.itemCant}>{item.cantidad}×</Text>
-            <View style={styles.itemInfo}>
-              <Text style={styles.itemNombre}>{item.nombre}</Text>
-              {item.personalizaciones.length > 0 && (
-                <Text style={styles.itemPers}>
-                  {item.personalizaciones.map((p) => p.opcion).join(" · ")}
-                </Text>
-              )}
-            </View>
-            <Text style={styles.itemPrecio}>
-              ${(item.precio_unitario * item.cantidad).toFixed(2)}
-            </Text>
-          </View>
+          <AdminItemRow key={i} item={item} />
         ))}
       </View>
 
       {/* Tipo de pedido + Total */}
       <View style={styles.totalRow}>
-        <View style={[
-          styles.tipoBadge,
-          pedido.tipo_pedido === "local"
-            ? styles.tipoBadgeLocal
-            : styles.tipoBadgeLlevar,
-        ]}>
-          <Text style={styles.tipoBadgeText}>
-            {pedido.tipo_pedido === "local" ? "🪑 En el local" : "🛍️ Para llevar"}
-          </Text>
+        <View style={{ flex: 1 }}>
+          <View style={[
+            styles.tipoBadge,
+            pedido.tipo_pedido === "local"
+              ? styles.tipoBadgeLocal
+              : styles.tipoBadgeLlevar,
+          ]}>
+            <Ionicons
+              name={pedido.tipo_pedido === "local" ? "cafe-outline" : "bag-outline"}
+              size={14}
+              color={pedido.tipo_pedido === "local" ? "#1B5E20" : "#B45309"}
+            />
+            <Text style={[
+              styles.tipoBadgeText,
+              pedido.tipo_pedido === "local" ? styles.tipoBadgeTextLocal : styles.tipoBadgeTextLlevar,
+            ]}>
+              {pedido.tipo_pedido === "local" ? "En el local" : "Para llevar"}
+            </Text>
+          </View>
+          {pedido.hora_recogida && (
+            <View style={styles.horaDestacada}>
+              <Ionicons name="alarm-outline" size={15} color="#B45309" />
+              <Text style={styles.horaDestacadaLabel}>Recoger a las</Text>
+              <Text style={styles.horaDestacadaValor}>
+                {new Date(pedido.hora_recogida).toLocaleTimeString("es-BO", { hour: "2-digit", minute: "2-digit" })}
+              </Text>
+            </View>
+          )}
         </View>
-        <Text style={styles.totalValor}>${pedido.total.toFixed(2)}</Text>
+        <Text style={styles.totalValor}>Bs. {pedido.total.toFixed(2)}</Text>
       </View>
 
       {/* Comprobante */}
@@ -119,6 +184,14 @@ function PedidoCard({
         </TouchableOpacity>
       ) : (
         <Text style={styles.sinComprobante}>Sin comprobante adjunto</Text>
+      )}
+
+      {/* Motivo de rechazo */}
+      {pedido.estado === "rechazado" && pedido.motivo_rechazo && (
+        <View style={styles.motivoBox}>
+          <Ionicons name="information-circle-outline" size={14} color={D.danger} />
+          <Text style={styles.motivoText}>{pedido.motivo_rechazo}</Text>
+        </View>
       )}
 
       <Modal visible={!!fotoUrl} transparent animationType="fade" onRequestClose={() => setFotoUrl(null)}>
@@ -156,8 +229,14 @@ export default function PedidosAdminScreen() {
   const [pedidos, setPedidos] = useState<Record<Tab, Pedido[]>>({
     pendiente: [], aprobado: [], rechazado: [],
   });
-  const [cargando, setCargando] = useState(true);
+  const [cargando, setCargando]     = useState(true);
   const [refrescando, setRefrescando] = useState(false);
+
+  // Modal de rechazo con justificante
+  const [modalRechazo, setModalRechazo]   = useState(false);
+  const [pedidoArechazar, setPedidoArechazar] = useState<Pedido | null>(null);
+  const [motivo, setMotivo]               = useState("");
+  const [rechazando, setRechazando]       = useState(false);
 
   const cargar = useCallback(async (silencioso = false) => {
     if (!token || !usuario?.cafeteria_id) return;
@@ -179,28 +258,46 @@ export default function PedidosAdminScreen() {
 
   useEffect(() => { cargar(); }, [cargar]);
 
-  const cambiarEstado = (pedido: Pedido, nuevoEstado: "aprobado" | "rechazado") => {
-    const accion = nuevoEstado === "aprobado" ? "aprobar" : "rechazar";
+  const aprobarPedido = (pedido: Pedido) => {
     Alert.alert(
-      `¿${accion.charAt(0).toUpperCase() + accion.slice(1)} pedido?`,
-      `El pedido de ${pedido.cliente?.nom_completo ?? "este cliente"} por $${pedido.total.toFixed(2)} será ${nuevoEstado}.`,
+      "¿Aprobar pedido?",
+      `El pedido de ${pedido.cliente?.nom_completo ?? "este cliente"} — Bs. ${pedido.total.toFixed(2)} será aprobado.`,
       [
         { text: "Cancelar", style: "cancel" },
         {
-          text: nuevoEstado === "aprobado" ? "Aprobar" : "Rechazar",
-          style: nuevoEstado === "aprobado" ? "default" : "destructive",
+          text: "Aprobar",
           onPress: async () => {
             if (!token || !usuario?.cafeteria_id) return;
             try {
-              await pedidosService.actualizarEstado(token, pedido.id, usuario.cafeteria_id, nuevoEstado);
+              await pedidosService.actualizarEstado(token, pedido.id, usuario.cafeteria_id, "aprobado");
               await cargar(true);
-            } catch (err: any) {
-              Alert.alert("Error", err.message);
-            }
+            } catch (err: any) { Alert.alert("Error", err.message); }
           },
         },
       ],
     );
+  };
+
+  const abrirRechazo = (pedido: Pedido) => {
+    setPedidoArechazar(pedido);
+    setMotivo("");
+    setModalRechazo(true);
+  };
+
+  const confirmarRechazo = async () => {
+    if (!pedidoArechazar || !token || !usuario?.cafeteria_id) return;
+    setRechazando(true);
+    try {
+      await pedidosService.actualizarEstado(
+        token, pedidoArechazar.id, usuario.cafeteria_id, "rechazado", motivo.trim() || undefined,
+      );
+      setModalRechazo(false);
+      await cargar(true);
+    } catch (err: any) {
+      Alert.alert("Error", err.message);
+    } finally {
+      setRechazando(false);
+    }
   };
 
   const listaPedidos = pedidos[tabActiva];
@@ -279,13 +376,48 @@ export default function PedidosAdminScreen() {
               <PedidoCard
                 key={p.id}
                 pedido={p}
-                onAprobar={p.estado === "pendiente" ? () => cambiarEstado(p, "aprobado") : undefined}
-                onRechazar={p.estado === "pendiente" ? () => cambiarEstado(p, "rechazado") : undefined}
+                onAprobar={p.estado === "pendiente" ? () => aprobarPedido(p) : undefined}
+                onRechazar={p.estado === "pendiente" ? () => abrirRechazo(p) : undefined}
               />
             ))
           )}
         </ScrollView>
       )}
+
+      {/* Modal rechazo con justificante */}
+      <Modal visible={modalRechazo} transparent animationType="fade" onRequestClose={() => setModalRechazo(false)}>
+        <KeyboardAvoidingView style={styles.rechazoOverlay} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+          <View style={styles.rechazoBox}>
+            <Text style={styles.rechazoTitulo}>Rechazar pedido</Text>
+            <Text style={styles.rechazoSub}>
+              {`Pedido de ${pedidoArechazar?.cliente?.nom_completo ?? "cliente"} · Bs. ${pedidoArechazar?.total.toFixed(2) ?? "0.00"}`}
+            </Text>
+            <Text style={styles.rechazoLabel}>Motivo del rechazo <Text style={styles.rechazoOpcional}>(opcional)</Text></Text>
+            <TextInput
+              style={styles.rechazoInput}
+              placeholder="Ej: Producto no disponible, horario cerrado..."
+              placeholderTextColor={D.hint}
+              value={motivo}
+              onChangeText={setMotivo}
+              multiline
+              numberOfLines={3}
+              textAlignVertical="top"
+              autoFocus
+            />
+            <View style={styles.rechazoBtns}>
+              <TouchableOpacity style={styles.rechazoCancelar} onPress={() => setModalRechazo(false)}>
+                <Text style={styles.rechazoCancelarText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.rechazoConfirmar, rechazando && { opacity: 0.6 }]} onPress={confirmarRechazo} disabled={rechazando}>
+                {rechazando
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={styles.rechazoConfirmarText}>Rechazar</Text>
+                }
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
     </SafeAreaView>
   );
@@ -353,6 +485,19 @@ const styles = StyleSheet.create({
   itemNombre: { fontSize: 13, fontWeight: "600", color: D.label },
   itemPers: { fontSize: 11, color: D.hint, marginTop: 1 },
   itemPrecio: { fontSize: 13, fontWeight: "700", color: D.label },
+  adminItemWrap: { marginBottom: 6 },
+  persToggle:    { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4, alignSelf: "flex-start" },
+  persToggleText:{ fontSize: 10, color: D.hint, fontWeight: "600" },
+  persLista:     { marginTop: 5, backgroundColor: "#f8f9fa", borderRadius: 6, padding: 8, gap: 3 },
+  persItem:      { flexDirection: "row", alignItems: "center", gap: 4 },
+  persDot:       { width: 4, height: 4, borderRadius: 2, backgroundColor: D.hint },
+  persNombre:    { fontSize: 10, color: D.hint, fontWeight: "700" },
+  persOpcion:    { fontSize: 11, color: D.label, flex: 1 },
+  persPrecio:    { fontSize: 10, color: D.accent, fontWeight: "700" },
+  itemTipoBadge: { alignSelf: "flex-start", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, marginTop: 3 },
+  itemTipoLocal:  { backgroundColor: "#E8F5E9" },
+  itemTipoLlevar: { backgroundColor: "#FFF8E1" },
+  itemTipoText:   { fontSize: 10, fontWeight: "700", color: D.label },
   totalRow: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     paddingHorizontal: 14, paddingVertical: 10,
@@ -360,10 +505,15 @@ const styles = StyleSheet.create({
   },
   totalLabel: { fontSize: 14, fontWeight: "700", color: D.label },
   totalValor: { fontSize: 16, fontWeight: "800", color: D.accent },
-  tipoBadge:       { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-  tipoBadgeLlevar: { backgroundColor: "#FFF8E1" },
-  tipoBadgeLocal:  { backgroundColor: "#E8F5E9" },
-  tipoBadgeText:   { fontSize: 12, fontWeight: "700", color: D.label },
+  tipoBadge:       { flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5, alignSelf: "flex-start" },
+  tipoBadgeLlevar: { backgroundColor: "#FFF8E1", borderWidth: 1, borderColor: "#FDE68A" },
+  tipoBadgeLocal:  { backgroundColor: "#E8F5E9", borderWidth: 1, borderColor: "#A5D6A7" },
+  tipoBadgeText:   { fontSize: 13, fontWeight: "700" },
+  tipoBadgeTextLlevar: { color: "#B45309" },
+  tipoBadgeTextLocal:  { color: "#1B5E20" },
+  horaDestacada: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 8, backgroundColor: "#FFFBEB", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1, borderColor: "#FDE68A" },
+  horaDestacadaLabel: { fontSize: 12, color: "#92400E", fontWeight: "600" },
+  horaDestacadaValor: { fontSize: 14, fontWeight: "800", color: "#B45309" },
   comprobanteBtn: {
     flexDirection: "row", alignItems: "center", gap: 6,
     paddingHorizontal: 14, paddingVertical: 10,
@@ -377,6 +527,22 @@ const styles = StyleSheet.create({
   fotoModalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.95)", justifyContent: "center", alignItems: "center" },
   fotoModalClose: { position: "absolute", top: 48, right: 16, zIndex: 10, backgroundColor: "rgba(255,255,255,0.18)", borderRadius: 22, padding: 10 },
   fotoModalImg: { width: "100%", height: "75%" },
+
+  motivoBox: { flexDirection: "row", alignItems: "flex-start", gap: 6, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: "#FFF5F5", borderTopWidth: 1, borderTopColor: "#FFCDD2" },
+  motivoText: { flex: 1, fontSize: 12, color: D.danger, fontStyle: "italic" },
+
+  rechazoOverlay:  { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
+  rechazoBox:      { backgroundColor: "#fff", borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 36 },
+  rechazoTitulo:   { fontSize: 18, fontWeight: "700", color: D.danger, marginBottom: 4 },
+  rechazoSub:      { fontSize: 13, color: D.hint, marginBottom: 20 },
+  rechazoLabel:    { fontSize: 13, fontWeight: "600", color: D.label, marginBottom: 8 },
+  rechazoOpcional: { fontWeight: "400", color: D.hint },
+  rechazoInput:    { backgroundColor: "#f9f9f9", borderRadius: 10, borderWidth: 1, borderColor: D.border, padding: 12, fontSize: 14, color: D.label, minHeight: 90, marginBottom: 20 },
+  rechazoBtns:     { flexDirection: "row", gap: 10 },
+  rechazoCancelar: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: "#f0f0f0", alignItems: "center" },
+  rechazoCancelarText: { fontWeight: "700", color: D.hint },
+  rechazoConfirmar:    { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: D.danger, alignItems: "center" },
+  rechazoConfirmarText:{ fontWeight: "700", color: "#fff" },
   acciones: {
     flexDirection: "row", gap: 10, padding: 12,
     borderTopWidth: 1, borderTopColor: "#f5f0eb",

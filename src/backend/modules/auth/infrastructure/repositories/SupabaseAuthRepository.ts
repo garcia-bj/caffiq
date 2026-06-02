@@ -150,6 +150,25 @@ export class SupabaseAuthRepository implements IAuthRepository {
     if (error) throw new Error(error.message);
   }
 
+  async actualizarPassword(id: string, password_hash: string): Promise<void> {
+    const { error } = await supabaseAdmin
+      .from(T_USUARIOS)
+      .update({ password: password_hash })
+      .eq("id", id);
+    if (error) throw new Error(error.message);
+  }
+
+  async existeTelefonoEnOtroUsuario(telefono: string, excludeId: string): Promise<boolean> {
+    const { data, error } = await supabaseAdmin
+      .from(T_USUARIOS)
+      .select("id")
+      .eq("num_telefono", telefono)
+      .neq("id", excludeId)
+      .limit(1);
+    if (error) throw new Error(error.message);
+    return (data?.length ?? 0) > 0;
+  }
+
   async vincularGoogleId(id: string, google_id: string): Promise<void> {
     const { error } = await supabaseAdmin
       .from(T_USUARIOS)

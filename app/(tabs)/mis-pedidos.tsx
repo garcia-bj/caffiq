@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Image, RefreshControl,
+  ActivityIndicator, Image, RefreshControl, LayoutAnimation, Platform, UIManager,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/frontend/context/AuthContext";
-import { pedidosService, type Pedido, type EstadoPedido, type TipoPedido } from "@/frontend/services/pedidos.service";
+import { pedidosService, type Pedido, type EstadoPedido } from "@/frontend/services/pedidos.service";
+
+if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const D = {
   bg:         "#EDF7F4",
@@ -49,6 +53,77 @@ function EstadoBadge({ estado }: { estado: EstadoPedido }) {
   );
 }
 
+// ── Ítem con acordeón de personalizaciones ────────────────────────────────────
+function ItemRow({ item }: { item: Pedido["items"][number] }) {
+  const [expandido, setExpandido] = useState(false);
+  const tienePers = item.personalizaciones.length > 0;
+
+  const toggleExpandir = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandido((v) => !v);
+  };
+
+  return (
+    <View style={styles.itemWrap}>
+      {/* Fila principal */}
+      <View style={styles.itemRow}>
+        <View style={styles.itemCantWrap}>
+          <Text style={styles.itemCant}>{item.cantidad}</Text>
+        </View>
+
+        <View style={{ flex: 1 }}>
+          <Text style={styles.itemNombre}>{item.nombre}</Text>
+
+          {/* Tipo por ítem */}
+          {item.tipo_pedido && (
+            <View style={[styles.itemTipoBadge, item.tipo_pedido === "local" ? styles.tipoBadgeLocal : styles.tipoBadgeLlevar]}>
+              <Ionicons
+                name={item.tipo_pedido === "local" ? "cafe-outline" : "bag-outline"}
+                size={11}
+                color={item.tipo_pedido === "local" ? "#1B5E20" : "#B45309"}
+              />
+              <Text style={[styles.itemTipoText, item.tipo_pedido === "local" ? styles.itemTipoTextLocal : styles.itemTipoTextLlevar]}>
+                {item.tipo_pedido === "local" ? "En el local" : "Para llevar"}
+              </Text>
+            </View>
+          )}
+
+          {/* Acordeón de personalizaciones */}
+          {tienePers && (
+            <>
+              <TouchableOpacity style={styles.persToggle} onPress={toggleExpandir} activeOpacity={0.7}>
+                <Ionicons name="options-outline" size={12} color={D.secondary} />
+                <Text style={styles.persToggleText}>
+                  {item.personalizaciones.length} personalización{item.personalizaciones.length > 1 ? "es" : ""}
+                </Text>
+                <Ionicons name={expandido ? "chevron-up" : "chevron-down"} size={12} color={D.secondary} />
+              </TouchableOpacity>
+
+              {expandido && (
+                <View style={styles.persLista}>
+                  {item.personalizaciones.map((p, i) => (
+                    <View key={i} style={styles.persItem}>
+                      <View style={styles.persDot} />
+                      <Text style={styles.persNombre}>{p.nombre}:</Text>
+                      <Text style={styles.persOpcion}>{p.opcion}</Text>
+                      {p.precio_adicional > 0 && (
+                        <Text style={styles.persPrecio}>+Bs. {p.precio_adicional.toFixed(2)}</Text>
+                      )}
+                    </View>
+                  ))}
+                </View>
+              )}
+            </>
+          )}
+        </View>
+
+        <Text style={styles.itemPrecio}>Bs. {(item.precio_unitario * item.cantidad).toFixed(2)}</Text>
+      </View>
+    </View>
+  );
+}
+
+// ── Card de pedido ────────────────────────────────────────────────────────────
 function PedidoCard({ pedido }: { pedido: Pedido }) {
   const [verFoto, setVerFoto] = useState(false);
 
@@ -66,30 +141,27 @@ function PedidoCard({ pedido }: { pedido: Pedido }) {
       {/* Ítems */}
       <View style={styles.itemsList}>
         {pedido.items.map((item, i) => (
-          <View key={i} style={styles.itemRow}>
-            <View style={styles.itemCantWrap}>
-              <Text style={styles.itemCant}>{item.cantidad}</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.itemNombre}>{item.nombre}</Text>
-              {item.personalizaciones.length > 0 && (
-                <Text style={styles.itemPers}>{item.personalizaciones.map((p) => p.opcion).join(" · ")}</Text>
-              )}
-            </View>
-            <Text style={styles.itemPrecio}>${(item.precio_unitario * item.cantidad).toFixed(2)}</Text>
-          </View>
+          <ItemRow key={i} item={item} />
         ))}
       </View>
 
-      {/* Tipo + Total */}
+      {/* Total */}
       <View style={styles.footerRow}>
-        <View style={[styles.tipoBadge, pedido.tipo_pedido === "local" ? styles.tipoBadgeLocal : styles.tipoBadgeLlevar]}>
-          <Text style={styles.tipoBadgeText}>
-            {pedido.tipo_pedido === "local" ? "🪑 En el local" : "🛍️ Para llevar"}
+        <Text style={styles.totalLabel}>Total</Text>
+        <View style={{ alignItems: "flex-end" }}>
+          <Text style={styles.totalValor}>Bs. {pedido.total.toFixed(2)}</Text>
+        </View>
+      </View>
+
+      {pedido.hora_recogida && (
+        <View style={styles.horaDestacada}>
+          <Ionicons name="alarm-outline" size={14} color="#B45309" />
+          <Text style={styles.horaDestacadaLabel}>Recoger a las</Text>
+          <Text style={styles.horaDestacadaValor}>
+            {new Date(pedido.hora_recogida).toLocaleTimeString("es-BO", { hour: "2-digit", minute: "2-digit" })}
           </Text>
         </View>
-        <Text style={styles.totalValor}>${pedido.total.toFixed(2)}</Text>
-      </View>
+      )}
 
       {/* Comprobante */}
       {pedido.comprobante_url ? (
@@ -103,17 +175,27 @@ function PedidoCard({ pedido }: { pedido: Pedido }) {
         </>
       ) : null}
 
-      {/* Banners */}
+      {/* Banner aprobado */}
       {pedido.estado === "aprobado" && (
         <View style={styles.aprobadoBanner}>
-          <Ionicons name="checkmark-circle" size={15} color={D.accent} />
-          <Text style={styles.aprobadoBannerText}>Pedido aprobado por la cafetería</Text>
+          <Ionicons name="checkmark-circle" size={15} color={D.aprobado.text} />
+          <Text style={styles.aprobadoBannerText}>Pedido aprobado — ¡ya puedes recogerlo!</Text>
         </View>
       )}
+
+      {/* Banner rechazado + motivo */}
       {pedido.estado === "rechazado" && (
         <View style={styles.rechazadoBanner}>
-          <Ionicons name="close-circle" size={15} color={D.danger} />
-          <Text style={styles.rechazadoBannerText}>Pedido rechazado — contacta a la cafetería</Text>
+          <View style={styles.rechazadoHeader}>
+            <Ionicons name="close-circle" size={15} color={D.rechazado.text} />
+            <Text style={styles.rechazadoBannerText}>Pedido rechazado por la cafetería</Text>
+          </View>
+          {pedido.motivo_rechazo ? (
+            <View style={styles.motivoBox}>
+              <Text style={styles.motivoLabel}>Motivo:</Text>
+              <Text style={styles.motivoTexto}>{pedido.motivo_rechazo}</Text>
+            </View>
+          ) : null}
         </View>
       )}
     </View>
@@ -147,19 +229,17 @@ export default function MisPedidosScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Mis Pedidos</Text>
       </View>
 
-      {/* Tabs */}
       <View style={styles.tabsRow}>
         {TABS.map((tab) => {
           const activa = tabActiva === tab.key;
           const count  = pedidos[tab.key].length;
           return (
             <TouchableOpacity key={tab.key} style={[styles.tab, activa && styles.tabActiva]} onPress={() => setTabActiva(tab.key)}>
-              <Ionicons name={tab.icon} size={15} color={activa ? D.accent : D.secondary} />
+              <Ionicons name={tab.icon} size={15} color={activa ? "#fff" : "rgba(255,255,255,0.55)"} />
               <Text style={[styles.tabLabel, activa && styles.tabLabelActiva]}>{tab.label}</Text>
               {count > 0 && (
                 <View style={[styles.tabBadge, activa && styles.tabBadgeActiva]}>
@@ -203,26 +283,20 @@ export default function MisPedidosScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: D.bg },
 
-  header: {
-    backgroundColor: D.accent,
-    paddingHorizontal: 20, paddingTop: 18, paddingBottom: 0,
-  },
+  header: { backgroundColor: D.accent, paddingHorizontal: 20, paddingTop: 18, paddingBottom: 0 },
   headerTitle: { fontSize: 22, fontWeight: "800", color: "#fff", paddingBottom: 0 },
 
-  tabsRow: {
-    flexDirection: "row",
-    backgroundColor: D.accent,
-  },
+  tabsRow: { flexDirection: "row", backgroundColor: D.accent },
   tab: {
     flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
     gap: 5, paddingVertical: 13,
     borderBottomWidth: 2, borderBottomColor: "transparent",
   },
   tabActiva:          { borderBottomColor: "#fff" },
-  tabLabel:           { fontSize: 11, color: "rgba(255,255,255,0.65)", fontWeight: "600" },
+  tabLabel:           { fontSize: 11, color: "rgba(255,255,255,0.55)", fontWeight: "600" },
   tabLabelActiva:     { color: "#fff" },
   tabBadge:           { backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 8, paddingHorizontal: 5, paddingVertical: 1 },
-  tabBadgeActiva:     { backgroundColor: "rgba(255,255,255,0.25)" },
+  tabBadgeActiva:     { backgroundColor: "rgba(255,255,255,0.3)" },
   tabBadgeText:       { fontSize: 10, color: "rgba(255,255,255,0.7)", fontWeight: "700" },
   tabBadgeTextActiva: { color: "#fff" },
 
@@ -241,31 +315,48 @@ const styles = StyleSheet.create({
     shadowColor: "#0D5A52", shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
   },
-  cardHeader:   { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", padding: 14, borderBottomWidth: 1, borderBottomColor: D.surface },
-  cardId:       { fontSize: 13, fontWeight: "700", color: D.primary, marginBottom: 2 },
-  cardFecha:    { fontSize: 11, color: D.secondary },
+  cardHeader: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", padding: 14, borderBottomWidth: 1, borderBottomColor: D.surface },
+  cardId:     { fontSize: 13, fontWeight: "700", color: D.primary, marginBottom: 2 },
+  cardFecha:  { fontSize: 11, color: D.secondary },
 
   badge:     { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, borderWidth: 1 },
   badgeText: { fontSize: 11, fontWeight: "700" },
 
   itemsList: { paddingHorizontal: 14, paddingVertical: 10 },
-  itemRow:   { flexDirection: "row", alignItems: "flex-start", gap: 10, marginBottom: 8 },
-  itemCantWrap: { width: 22, height: 22, borderRadius: 6, backgroundColor: D.accentBg, alignItems: "center", justifyContent: "center" },
+  itemWrap:  { marginBottom: 8 },
+  itemRow:   { flexDirection: "row", alignItems: "flex-start", gap: 10 },
+  itemCantWrap: { width: 22, height: 22, borderRadius: 6, backgroundColor: D.accentBg, alignItems: "center", justifyContent: "center", marginTop: 1 },
   itemCant:  { fontSize: 11, fontWeight: "800", color: D.accent },
   itemNombre:{ fontSize: 13, fontWeight: "600", color: D.primary },
-  itemPers:  { fontSize: 11, color: D.secondary, marginTop: 1 },
-  itemPrecio:{ fontSize: 13, fontWeight: "700", color: D.primary },
+  itemPrecio:{ fontSize: 13, fontWeight: "700", color: D.primary, minWidth: 70, textAlign: "right" },
+
+  itemTipoBadge: { flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "flex-start", borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3, marginTop: 4 },
+  tipoBadgeLlevar: { backgroundColor: "#FFF8E1", borderWidth: 1, borderColor: "#FDE68A" },
+  tipoBadgeLocal:  { backgroundColor: "#E8F5E9", borderWidth: 1, borderColor: "#A5D6A7" },
+  itemTipoText:    { fontSize: 10, fontWeight: "700" },
+  itemTipoTextLlevar: { color: "#B45309" },
+  itemTipoTextLocal:  { color: "#1B5E20" },
+
+  // Acordeón de personalizaciones
+  persToggle: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 5, alignSelf: "flex-start" },
+  persToggleText: { fontSize: 11, color: D.secondary, fontWeight: "600" },
+  persLista:  { marginTop: 6, backgroundColor: D.surface, borderRadius: 8, padding: 8, gap: 4 },
+  persItem:   { flexDirection: "row", alignItems: "center", gap: 5 },
+  persDot:    { width: 5, height: 5, borderRadius: 3, backgroundColor: D.secondary },
+  persNombre: { fontSize: 11, color: D.secondary, fontWeight: "600" },
+  persOpcion: { fontSize: 11, color: D.primary, flex: 1 },
+  persPrecio: { fontSize: 11, color: D.accent, fontWeight: "700" },
 
   footerRow: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     paddingHorizontal: 14, paddingVertical: 10,
     borderTopWidth: 1, borderTopColor: D.surface,
   },
-  tipoBadge:       { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-  tipoBadgeLlevar: { backgroundColor: D.surface },
-  tipoBadgeLocal:  { backgroundColor: D.accentBg },
-  tipoBadgeText:   { fontSize: 11, fontWeight: "700", color: D.secondary },
-  totalValor:      { fontSize: 16, fontWeight: "800", color: D.accent },
+  totalLabel: { fontSize: 14, fontWeight: "700", color: D.primary },
+  totalValor: { fontSize: 16, fontWeight: "800", color: D.accent },
+  horaDestacada: { flexDirection: "row", alignItems: "center", gap: 6, marginHorizontal: 14, marginBottom: 10, backgroundColor: "#FFFBEB", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1, borderColor: "#FDE68A" },
+  horaDestacadaLabel: { fontSize: 12, color: "#92400E", fontWeight: "600" },
+  horaDestacadaValor: { fontSize: 14, fontWeight: "800", color: "#B45309" },
 
   comprobanteBtn: {
     flexDirection: "row", alignItems: "center", gap: 6,
@@ -282,11 +373,15 @@ const styles = StyleSheet.create({
     backgroundColor: D.aprobado.bg,
   },
   aprobadoBannerText: { fontSize: 12, color: D.aprobado.text, fontWeight: "600" },
+
   rechazadoBanner: {
-    flexDirection: "row", alignItems: "center", gap: 6,
-    paddingHorizontal: 14, paddingVertical: 10,
     borderTopWidth: 1, borderTopColor: D.rechazado.border,
     backgroundColor: D.rechazado.bg,
+    paddingHorizontal: 14, paddingVertical: 10,
   },
+  rechazadoHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
   rechazadoBannerText: { fontSize: 12, color: D.rechazado.text, fontWeight: "600" },
+  motivoBox:   { marginTop: 8, backgroundColor: "rgba(84,26,26,0.07)", borderRadius: 8, padding: 10 },
+  motivoLabel: { fontSize: 10, fontWeight: "800", color: D.rechazado.text, marginBottom: 3, textTransform: "uppercase", letterSpacing: 0.5 },
+  motivoTexto: { fontSize: 13, color: D.rechazado.text, lineHeight: 18 },
 });

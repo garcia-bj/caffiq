@@ -40,7 +40,12 @@ export async function obtenerExpoPushToken(): Promise<string | null> {
       : await Notifications.getExpoPushTokenAsync();
 
     return result.data;
-  } catch (e) {
+  } catch (e: any) {
+    const msg = e?.message ?? "";
+    if (msg.includes("FirebaseApp") || msg.includes("FCM")) {
+      console.warn("[Push] Firebase no configurado — falta google-services.json");
+      return "FIREBASE_NOT_CONFIGURED";
+    }
     console.warn("[Push] No se pudo obtener push token:", e);
     return null;
   }

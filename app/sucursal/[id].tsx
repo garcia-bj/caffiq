@@ -11,6 +11,7 @@ import { useCart, type OpcionSeleccionada } from "@/frontend/context/CartContext
 import { productosService, type ProductoPublico } from "@/frontend/services/productos.service";
 import { personalizacionesService, type Personalizacion } from "@/frontend/services/personalizaciones.service";
 import { PersonalizacionModal } from "@/frontend/components/PersonalizacionModal";
+import { useResponsive } from "@/frontend/hooks/use-responsive";
 
 function estadoCalc(apertura?: string, cierre?: string): "open" | "warn" | null {
   if (!apertura || !cierre) return "open";
@@ -92,11 +93,11 @@ function ProductoCard({
         </View>
       ) : null}
 
-      <View style={styles.productoImgWrap}>
+      <View style={[styles.productoImgWrap, { height: hp(14) }]}>
         {item.imagen_url ? (
           <Image source={{ uri: item.imagen_url }} style={styles.productoImg} resizeMode="cover" />
         ) : (
-          <Text style={styles.productoEmoji}>☕</Text>
+          <Text style={[styles.productoEmoji, { fontSize: fs(30) }]}>☕</Text>
         )}
       </View>
 
@@ -107,7 +108,7 @@ function ProductoCard({
         ) : null}
 
         <View style={styles.priceRow}>
-          <Text style={styles.productoPrecio}>${item.precio.toFixed(2)}</Text>
+          <Text style={styles.productoPrecio}>Bs. {item.precio.toFixed(2)}</Text>
           {item.disponible && !noStock ? (
             <TouchableOpacity
               style={[styles.addBtn, atLimit && styles.addBtnDisabled]}
@@ -148,6 +149,7 @@ export default function SucursalMenuScreen() {
 
   const { token }   = useAuth();
   const { agregar, actualizar, vaciar, items, cantidad_total, cafeteria_id: cartCafId } = useCart();
+  const { fs, hp } = useResponsive();
   const [productos, setProductos] = useState<ProductoPublico[]>([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState<string | null>(null);
@@ -276,7 +278,7 @@ export default function SucursalMenuScreen() {
       {/* ── Contenido ─────────────────────────────────────────────── */}
       {estadoSucursal === null ? (
         <View style={styles.cerradoContainer}>
-          <Text style={styles.cerradoIcon}>🔒</Text>
+          <Text style={[styles.cerradoIcon, { fontSize: fs(40) }]}>🔒</Text>
           <Text style={styles.cerradoTitulo}>Sucursal cerrada</Text>
           <Text style={styles.cerradoDesc}>
             Esta sucursal no está recibiendo pedidos en este momento.
@@ -322,7 +324,7 @@ export default function SucursalMenuScreen() {
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={
               <View style={styles.center}>
-                <Text style={{ fontSize: 40 }}>☕</Text>
+                <Text style={{ fontSize: fs(30) }}>☕</Text>
                 <Text style={styles.emptyText}>No hay productos disponibles</Text>
               </View>
             }

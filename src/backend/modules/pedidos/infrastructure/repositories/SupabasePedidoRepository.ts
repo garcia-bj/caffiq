@@ -17,6 +17,7 @@ export class SupabasePedidoRepository {
         total:           datos.total,
         tipo_pedido:     datos.tipo_pedido,
         comprobante_url: datos.comprobante_url ?? null,
+        hora_recogida:   datos.hora_recogida ?? null,
         estado:          "pendiente",
       })
       .select()
@@ -51,10 +52,13 @@ export class SupabasePedidoRepository {
     return (data ?? []) as PedidoEntity[];
   }
 
-  async actualizarEstado(id: string, cafeteria_id: string, estado: EstadoPedido): Promise<PedidoEntity> {
+  async actualizarEstado(id: string, cafeteria_id: string, estado: EstadoPedido, motivo_rechazo?: string): Promise<PedidoEntity> {
+    const updates: Record<string, unknown> = { estado };
+    if (estado === "rechazado" && motivo_rechazo) updates.motivo_rechazo = motivo_rechazo;
+
     const { data, error } = await supabaseAdmin
       .from(TABLA)
-      .update({ estado })
+      .update(updates)
       .eq("id", id)
       .eq("cafeteria_id", cafeteria_id)
       .select()

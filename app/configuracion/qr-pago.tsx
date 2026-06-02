@@ -10,6 +10,7 @@ import { useAuth } from "@/frontend/context/AuthContext";
 import { cafeteriasService } from "@/frontend/services/cafeterias.service";
 import { subirImagenCloudinary } from "@/frontend/services/cloudinary.service";
 import { useNavbar } from "@/frontend/context/NavbarContext";
+import { useResponsive } from "@/frontend/hooks/use-responsive";
 
 const D = {
   bg:      "#f5f0eb",
@@ -26,6 +27,7 @@ const D = {
 export default function QrPagoScreen() {
   const { token, usuario } = useAuth();
   const { open: openNavbar } = useNavbar();
+  const { hp } = useResponsive();
   const [qrActual, setQrActual] = useState<string | null>(null);
   const [qrNuevo, setQrNuevo] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
@@ -146,7 +148,7 @@ export default function QrPagoScreen() {
           <View style={styles.qrSection}>
             {imagenMostrada ? (
               <View style={styles.qrCard}>
-                <Image source={{ uri: imagenMostrada }} style={styles.qrImage} resizeMode="contain" />
+                <Image source={{ uri: imagenMostrada }} style={[styles.qrImage, { height: hp(35) }]} resizeMode="contain" />
                 {hayCambio && (
                   <View style={styles.nuevoBadge}>
                     <Text style={styles.nuevoBadgeText}>Nuevo (sin guardar)</Text>

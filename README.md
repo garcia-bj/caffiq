@@ -88,9 +88,7 @@ Crea `src/backend/.env` copiando [`src/backend/.env.example`](src/backend/.env.e
 PORT=3000
 SUPABASE_URL=https://xxxxxxxx.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=eyJxxxxxxxx
-JWT_SECRET=cambia_esto_por_un_secreto_seguro_de_al_menos_32_caracteres
-JWT_EXPIRES_IN=7d
-WHATSAPP_WEBHOOK_URL=https://tu-n8n-instancia/webhook/xxxxxxxx
+JWT_SECRET=tu_secreto_jwt
 GOOGLE_REDIRECT_URL=http://localhost:3000/api/auth/google/callback
 ```
 

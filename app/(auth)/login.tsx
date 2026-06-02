@@ -122,11 +122,19 @@ export default function LoginScreen() {
     if (!validarTodo()) return;
     try {
       setLoading(true);
-      await login(nomUsuario.trim(), password);
+      await login(nomUsuario.trim().toLowerCase(), password);
       router.replace("/(tabs)");
-    } catch (e: unknown) {
+    } catch (e: any) {
+      // Teléfono no verificado → navegar directo a verificación
+      if (e.code === "PHONE_NOT_VERIFIED") {
+        router.push({
+          pathname: "/(auth)/verify-phone",
+          params: { usuario_id: e.usuario_id, telefono: e.num_telefono },
+        } as any);
+        return;
+      }
       const msg = e instanceof Error ? e.message : "Error al iniciar sesión";
-      const esCredenciales = msg.toLowerCase().includes("incorrecto") || msg.toLowerCase().includes("invalid");
+      const esCredenciales = msg.toLowerCase().includes("incorrecto") || msg.toLowerCase().includes("invalid") || msg.toLowerCase().includes("credencial");
       if (esCredenciales) {
         setErrors({ nomUsuario: " ", password: "Correo o contraseña incorrectos" });
       } else {
@@ -184,7 +192,7 @@ export default function LoginScreen() {
                 secure
               />
 
-              <TouchableOpacity style={styles.forgotWrapper}>
+              <TouchableOpacity style={styles.forgotWrapper} onPress={() => router.push("/(auth)/forgot-password" as any)}>
                 <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
               </TouchableOpacity>
 

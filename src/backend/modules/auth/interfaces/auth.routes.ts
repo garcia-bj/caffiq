@@ -16,5 +16,7 @@ router.get("/me",           authMiddleware, authController.me);
 router.patch("/me",         authMiddleware, authController.updateMe);
 router.patch("/push-token",      authMiddleware, authController.savePushToken);
 router.post("/setup-cafeteria",  authMiddleware, authController.setupCafeteria);
+router.post("/forgot-password",  authController.forgotPassword);
+router.post("/reset-password",   authController.resetPassword);
 
 export default router;

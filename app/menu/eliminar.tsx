@@ -146,7 +146,7 @@ export default function EliminarProductoMenu() {
                     </TouchableOpacity>
                     <View style={styles.cardInfo}>
                       <Text style={styles.cardNombre} numberOfLines={2}>{p.nombre}</Text>
-                      <Text style={styles.cardPrecio}>$ {p.precio?.toFixed(2)}</Text>
+                      <Text style={styles.cardPrecio}>Bs. {p.precio?.toFixed(2)}</Text>
                     </View>
                   </View>
                 ))}

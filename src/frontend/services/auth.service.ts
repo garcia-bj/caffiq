@@ -32,9 +32,13 @@ const api = async <T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> => {
+  const { headers: optHeaders, ...restOpts } = options;
   const res = await fetch(`${BASE_URL}${path}`, {
-    headers: { "Content-Type": "application/json", ...options.headers },
-    ...options,
+    ...restOpts,
+    headers: {
+      "Content-Type": "application/json",
+      ...(optHeaders ?? {}),
+    },
   });
   const json = await res.json();
   if (!res.ok) throw new Error(json.mensaje ?? "Error desconocido");
@@ -76,11 +80,23 @@ export const authService = {
       body: JSON.stringify({ usuario_id }),
     }),
 
-  login: (nom_usuario: string, password: string) =>
-    api<AuthResponse>("/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ nom_usuario, password }),
-    }),
+  login: async (nom_usuario: string, password: string): Promise<AuthResponse> => {
+    const res  = await fetch(`${BASE_URL}/auth/login`, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ nom_usuario, password }),
+    });
+    const json = await res.json();
+    if (res.status === 403 && json.code === "PHONE_NOT_VERIFIED") {
+      throw Object.assign(new Error(json.mensaje ?? "Teléfono no verificado"), {
+        code:         "PHONE_NOT_VERIFIED" as const,
+        usuario_id:   json.usuario_id  as string,
+        num_telefono: json.num_telefono as string,
+      });
+    }
+    if (!res.ok) throw new Error(json.mensaje ?? "Error desconocido");
+    return json as AuthResponse;
+  },
 
   me: (token: string) =>
     api<{ usuario: UsuarioPublico }>("/auth/me", {
@@ -117,5 +133,17 @@ export const authService = {
     api<GoogleLoginResult>("/auth/google/token", {
       method: "POST",
       body: JSON.stringify({ access_token, rol }),
+    }),
+
+  solicitarResetPassword: (email: string) =>
+    api<{ mensaje: string; usuario_id: string }>("/auth/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+
+  resetearPassword: (usuario_id: string, codigo: string, nueva_password: string) =>
+    api<{ mensaje: string }>("/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ usuario_id, codigo, nueva_password }),
     }),
 };

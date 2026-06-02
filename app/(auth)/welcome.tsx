@@ -3,8 +3,10 @@ import { Image } from "expo-image";
 import { router } from "expo-router";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useResponsive } from "@/frontend/hooks/use-responsive";
 
 export default function WelcomeScreen() {
+  const { fs } = useResponsive();
   return (
     <View style={styles.container}>
       {/* Imagen hero */}
@@ -21,7 +23,7 @@ export default function WelcomeScreen() {
         {/* Decoracion superior */}
         <View style={styles.decorLine} />
 
-        <Text style={styles.title}>Vamos por un{"\n"}cafe</Text>
+        <Text style={[styles.title, { fontSize: fs(28), lineHeight: fs(36) }]}>Vamos por un{"\n"}cafe</Text>
         <Text style={styles.subtitle}>
           El mejor grano, el cafe mas fino,{"\n"}el sabor mas potente.
         </Text>

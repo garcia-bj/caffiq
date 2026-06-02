@@ -22,14 +22,21 @@ const RESEND_SECONDS = 60;
 
 export default function VerifyPhoneScreen() {
   const { usuario_id, telefono, from_google } = useLocalSearchParams<{ usuario_id: string; telefono: string; from_google?: string }>();
+  const { token } = useAuth();
   const { setSession } = useAuth();
 
-  const [code, setCode]           = useState<string[]>(Array(CODE_LENGTH).fill(""));
-  const [loading, setLoading]     = useState(false);
+  const [code, setCode]             = useState<string[]>(Array(CODE_LENGTH).fill(""));
+  const [loading, setLoading]       = useState(false);
   const [resendSecs, setResendSecs] = useState(RESEND_SECONDS);
   const [resending, setResending]   = useState(false);
 
-  const inputs = useRef<(TextInput | null)[]>([]);
+  const [editando, setEditando]     = useState(false);
+  const [telefonoActual, setTelefonoActual] = useState(telefono ?? "");
+  const [nuevoNumero, setNuevoNumero] = useState(telefono ?? "");
+  const [guardando, setGuardando]   = useState(false);
+
+  const inputs      = useRef<(TextInput | null)[]>([]);
+  const numeroInput = useRef<TextInput>(null);
 
   // Countdown para reenvio
   useEffect(() => {
@@ -37,6 +44,10 @@ export default function VerifyPhoneScreen() {
     const t = setTimeout(() => setResendSecs((s) => s - 1), 1000);
     return () => clearTimeout(t);
   }, [resendSecs]);
+
+  useEffect(() => {
+    if (telefono) { setTelefonoActual(telefono); setNuevoNumero(telefono); }
+  }, [telefono]);
 
   const handleChange = (text: string, index: number) => {
     const digit = text.replace(/[^0-9]/g, "").slice(-1);
@@ -62,8 +73,8 @@ export default function VerifyPhoneScreen() {
     }
     try {
       setLoading(true);
-      const { token, usuario } = await authService.verifyPhone(usuario_id!, fullCode);
-      await setSession(token, usuario);
+      const { token: newToken, usuario } = await authService.verifyPhone(usuario_id!, fullCode);
+      await setSession(newToken, usuario);
 
       if (from_google === "1" && usuario.rol === "admin" && !usuario.cafeteria_id) {
         router.replace("/auth/setup-cafeteria" as any);
@@ -85,7 +96,7 @@ export default function VerifyPhoneScreen() {
       setResending(true);
       await authService.resendOtp(usuario_id!);
       setResendSecs(RESEND_SECONDS);
-      Alert.alert("Codigo reenviado", `Revisa los mensajes de ${telefono}`);
+      Alert.alert("Codigo reenviado", `Revisa los mensajes de ${telefonoActual}`);
     } catch (e: unknown) {
       Alert.alert("Error", e instanceof Error ? e.message : "No se pudo reenviar");
     } finally {
@@ -93,9 +104,36 @@ export default function VerifyPhoneScreen() {
     }
   };
 
-  const maskedPhone = telefono
-    ? `${telefono.slice(0, 4)}****${telefono.slice(-3)}`
-    : "tu numero";
+  const handleGuardarNumero = async () => {
+    const numero = nuevoNumero.trim().replace(/\s|-/g, "");
+    if (!numero) { Alert.alert("Error", "Ingresa tu numero de WhatsApp"); return; }
+    if (!/^\+\d{6,15}$/.test(numero)) { Alert.alert("Error", "Ingresa un numero valido con codigo de pais (ej. +59176412345)"); return; }
+    if (numero === telefonoActual) { setEditando(false); return; }
+
+    try {
+      setGuardando(true);
+      if (token) {
+        await authService.updateMe(token, { num_telefono: numero });
+      }
+      await authService.resendOtp(usuario_id!);
+      setTelefonoActual(numero);
+      setNuevoNumero(numero);
+      setResendSecs(RESEND_SECONDS);
+      setCode(Array(CODE_LENGTH).fill(""));
+      setEditando(false);
+      Alert.alert("Listo", "Numero actualizado. Revisa tu WhatsApp para el nuevo codigo.");
+    } catch (e: unknown) {
+      Alert.alert("Error", e instanceof Error ? e.message : "No se pudo actualizar el numero");
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const handleAbrirEdicion = () => {
+    setNuevoNumero(telefonoActual);
+    setEditando(true);
+    setTimeout(() => numeroInput.current?.focus(), 150);
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -117,9 +155,48 @@ export default function VerifyPhoneScreen() {
           {/* Titulos */}
           <Text style={styles.title}>Verifica tu numero</Text>
           <Text style={styles.subtitle}>
-            Ingresa el codigo de 6 digitos enviado a{"\n"}
-            <Text style={styles.phone}>{maskedPhone}</Text>
+            Ingresa el codigo de 6 digitos enviado a
           </Text>
+
+          {/* Numero con opcion de cambiar */}
+          {editando ? (
+            <View style={styles.editRow}>
+              <View style={styles.editInputWrap}>
+                <Ionicons name="logo-whatsapp" size={18} color="#25D366" style={{ marginRight: 8 }} />
+                <TextInput
+                  ref={numeroInput}
+                  style={styles.editInput}
+                  value={nuevoNumero}
+                  onChangeText={(v) => setNuevoNumero(v.replace(/[^\d+]/g, ""))}
+                  placeholder="+59176412345"
+                  placeholderTextColor={Caffiq.placeholder}
+                  keyboardType="phone-pad"
+                  autoFocus
+                />
+              </View>
+              <View style={styles.editBtns}>
+                <TouchableOpacity style={styles.cancelarEditBtn} onPress={() => setEditando(false)}>
+                  <Ionicons name="close" size={18} color={Caffiq.placeholder} />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.guardarEditBtn} onPress={handleGuardarNumero} disabled={guardando}>
+                  {guardando ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Ionicons name="checkmark" size={18} color="#fff" />
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.phoneRow}>
+              <Ionicons name="logo-whatsapp" size={18} color="#25D366" />
+              <Text style={styles.phone} numberOfLines={1}>{telefonoActual || "tu numero"}</Text>
+              <TouchableOpacity style={styles.cambiarBtn} onPress={handleAbrirEdicion}>
+                <Ionicons name="create-outline" size={14} color={Caffiq.white} />
+                <Text style={styles.cambiarText}>Cambiar</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Cajas OTP */}
           <View style={styles.otpRow}>
@@ -145,7 +222,7 @@ export default function VerifyPhoneScreen() {
             style={styles.verifyBtn}
             activeOpacity={0.85}
             onPress={handleVerify}
-            disabled={loading}
+            disabled={loading || editando}
           >
             {loading ? (
               <ActivityIndicator color={Caffiq.white} />
@@ -162,7 +239,7 @@ export default function VerifyPhoneScreen() {
                 Reenviar en {resendSecs}s
               </Text>
             ) : (
-              <TouchableOpacity onPress={handleResend} disabled={resending}>
+              <TouchableOpacity onPress={handleResend} disabled={resending || editando}>
                 <Text style={styles.resendLink}>
                   {resending ? "Enviando..." : "Reenviar"}
                 </Text>
@@ -217,12 +294,83 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Caffiq.textMuted,
     textAlign: "center",
-    lineHeight: 22,
-    marginBottom: 36,
+    marginBottom: 12,
+  },
+  phoneRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#E8F5F2",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 28,
   },
   phone: {
+    fontSize: 15,
     fontWeight: "700",
-    color: Caffiq.pineTeal,
+    color: Caffiq.coffeBean,
+    flex: 1,
+  },
+  cambiarBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: Caffiq.pineTeal,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  cambiarText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: Caffiq.white,
+  },
+
+  editRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 28,
+  },
+  editInputWrap: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF8E1",
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: "#FDE68A",
+    paddingHorizontal: 14,
+    height: 48,
+  },
+  editInput: {
+    flex: 1,
+    fontSize: 15,
+    color: Caffiq.coffeBean,
+    fontWeight: "600",
+  },
+  editBtns: {
+    flexDirection: "row",
+    gap: 6,
+  },
+  cancelarEditBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: Caffiq.inputBg,
+    borderWidth: 1,
+    borderColor: Caffiq.inputBorder,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  guardarEditBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: Caffiq.pineTeal,
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   // ── Cajas OTP ────────────────────────────────────────────────────────────────

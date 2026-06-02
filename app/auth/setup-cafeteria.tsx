@@ -12,11 +12,13 @@ import { Caffiq } from "@/frontend/constants/theme";
 import { useAuth } from "@/frontend/context/AuthContext";
 import { authService } from "@/frontend/services/auth.service";
 import { subirImagenCloudinary } from "@/frontend/services/cloudinary.service";
+import { useResponsive } from "@/frontend/hooks/use-responsive";
 
 const PASOS = ["Información", "Identidad"] as const;
 
 export default function SetupCafeteriaScreen() {
   const { token, setSession } = useAuth();
+  const { hp } = useResponsive();
 
   const [paso,        setPaso]        = useState(0);
   const [nomCafeteria, setNomCafeteria] = useState("");
@@ -179,7 +181,7 @@ export default function SetupCafeteriaScreen() {
               </Text>
 
               {logoUri ? (
-                <View style={styles.logoPreview}>
+                <View style={[styles.logoPreview, { height: hp(25) }]}>
                   <Image source={{ uri: logoUri }} style={styles.logoImg} />
                   <TouchableOpacity style={styles.logoRemove} onPress={() => setLogoUri(null)}>
                     <Ionicons name="close" size={18} color="#fff" />

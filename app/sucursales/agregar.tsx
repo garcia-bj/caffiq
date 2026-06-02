@@ -18,10 +18,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "@/frontend/context/AuthContext";
 import { sucursalesService } from "@/frontend/services/sucursales.service";
 import { subirImagenCloudinary } from "@/frontend/services/cloudinary.service";
+import { useResponsive } from "@/frontend/hooks/use-responsive";
 
 export default function AgregarSucursal() {
   const { token, usuario } = useAuth();
   const { open: openNavbar } = useNavbar();
+  const { fs } = useResponsive();
   const [nombre, setNombre] = useState("");
   const [direccion, setDireccion] = useState("");
   const [ciudad, setCiudad] = useState("");
@@ -211,7 +213,7 @@ export default function AgregarSucursal() {
             </View>
           ) : (
             <TouchableOpacity style={styles.uploadBox} onPress={seleccionarImagen}>
-              <Text style={styles.uploadIcon}>⬆</Text>
+              <Text style={[styles.uploadIcon, { fontSize: fs(26) }]}>⬆</Text>
               <Text style={styles.uploadText}>Coloca un archivo aquí</Text>
               <Text style={styles.uploadSubtext}>Toca para abrir la galería</Text>
             </TouchableOpacity>

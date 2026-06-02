@@ -12,10 +12,12 @@ import { useAuth } from "@/frontend/context/AuthContext";
 import { sucursalesService, type SucursalPublica } from "@/frontend/services/sucursales.service";
 import { productosService } from "@/frontend/services/productos.service";
 import { subirImagenCloudinary } from "@/frontend/services/cloudinary";
+import { useResponsive } from "@/frontend/hooks/use-responsive";
 
 export default function AgregarProductoMenu() {
   const { token, usuario } = useAuth();
   const { open: openNavbar } = useNavbar();
+  const { fs } = useResponsive();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [sucursales, setSucursales] = useState<SucursalPublica[]>([]);
   const [cargandoLista, setCargandoLista] = useState(true);
@@ -203,7 +205,7 @@ export default function AgregarProductoMenu() {
             </View>
           ) : (
             <TouchableOpacity style={styles.uploadBox} onPress={seleccionarImagen}>
-              <Text style={styles.uploadIcon}>⬆</Text>
+              <Text style={[styles.uploadIcon, { fontSize: fs(26) }]}>⬆</Text>
               <Text style={styles.uploadText}>Coloque un archivo aquí</Text>
               <Text style={styles.uploadSubtext}>Toca para abrir la galería</Text>
             </TouchableOpacity>
@@ -231,7 +233,7 @@ export default function AgregarProductoMenu() {
               <Text style={styles.modalNombre}>{sucursalNombre}</Text>.
             </Text>
             <View style={styles.modalResumen}>
-              <Text style={styles.resumenItem}>💰 Precio: ${precio}</Text>
+              <Text style={styles.resumenItem}>💰 Precio: Bs. {precio}</Text>
               <Text style={styles.resumenItem}>📦 Stock: {stock || "No especificado"}</Text>
               <Text style={styles.resumenItem}>🖼 Foto: {imagen ? "Seleccionada ✓" : "Sin foto"}</Text>
             </View>

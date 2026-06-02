@@ -13,17 +13,21 @@ import { VerifyPhone } from "../application/use-cases/VerifyPhone";
 import { ResendOtp } from "../application/use-cases/ResendOtp";
 import { GoogleLogin } from "../application/use-cases/GoogleLogin";
 import { UpdateMe } from "../application/use-cases/UpdateMe";
+import { SolicitarResetPassword } from "../application/use-cases/SolicitarResetPassword";
+import { ResetearPassword } from "../application/use-cases/ResetearPassword";
 
 // ── Composition root (no IoC container needed at this scale) ─────────────────
 const authRepo         = new SupabaseAuthRepository();
 const verificacionRepo = new SupabaseVerificacionRepository();
 
-const registerUser = new RegisterUser(authRepo, verificacionRepo, enviarWhatsApp);
-const loginUser    = new LoginUser(authRepo);
-const verifyPhone  = new VerifyPhone(authRepo, verificacionRepo);
-const resendOtp    = new ResendOtp(authRepo, verificacionRepo, enviarWhatsApp);
-const googleLogin  = new GoogleLogin(authRepo);
-const updateMe     = new UpdateMe(authRepo);
+const registerUser         = new RegisterUser(authRepo, verificacionRepo, enviarWhatsApp);
+const loginUser            = new LoginUser(authRepo);
+const verifyPhone          = new VerifyPhone(authRepo, verificacionRepo);
+const resendOtp            = new ResendOtp(authRepo, verificacionRepo, enviarWhatsApp);
+const googleLogin          = new GoogleLogin(authRepo);
+const updateMe             = new UpdateMe(authRepo);
+const solicitarResetPassword = new SolicitarResetPassword(authRepo, verificacionRepo, enviarWhatsApp);
+const resetearPassword     = new ResetearPassword(authRepo, verificacionRepo);
 
 export const authController = {
 
@@ -59,7 +63,22 @@ export const authController = {
       if (!nom_usuario || !password) throw new AppError("nom_usuario y password son requeridos", 400);
       const resultado = await loginUser.execute({ nom_usuario, password });
       res.status(200).json(resultado);
-    } catch (err) { next(err); }
+    } catch (err: any) {
+      // Si el teléfono no está verificado, devolver usuario_id para que el frontend
+      // pueda navegar directamente a la pantalla de verificación
+      if (err.statusCode === 403 && err.message?.includes("verificar")) {
+        const usuario = await authRepo.buscarPorNombreUsuario(req.body.nom_usuario).catch(() => null);
+        if (usuario) {
+          return res.status(403).json({
+            mensaje:      err.message,
+            code:         "PHONE_NOT_VERIFIED",
+            usuario_id:   usuario.id,
+            num_telefono: usuario.num_telefono,
+          });
+        }
+      }
+      next(err);
+    }
   },
 
   // POST /api/auth/resend-otp
@@ -220,6 +239,28 @@ export const authController = {
       // Excluir password del resultado
       const { password: _, ...usuarioPublico } = usuario as any;
       res.status(200).json({ usuario: usuarioPublico });
+    } catch (err) { next(err); }
+  },
+
+  // POST /api/auth/forgot-password
+  async forgotPassword(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { email } = req.body;
+      if (!email) throw new AppError("El correo electronico es requerido", 400);
+      const resultado = await solicitarResetPassword.execute(email);
+      res.status(200).json(resultado);
+    } catch (err) { next(err); }
+  },
+
+  // POST /api/auth/reset-password
+  async resetPassword(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { usuario_id, codigo, nueva_password } = req.body;
+      if (!usuario_id || !codigo || !nueva_password) {
+        throw new AppError("usuario_id, codigo y nueva_password son requeridos", 400);
+      }
+      const resultado = await resetearPassword.execute(usuario_id, codigo, nueva_password);
+      res.status(200).json(resultado);
     } catch (err) { next(err); }
   },
 };

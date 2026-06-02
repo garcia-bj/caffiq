@@ -70,6 +70,14 @@ const MENU_SECTIONS = [
       { label: "QR de Pago", ruta: "/configuracion/qr-pago", icon: "qr-code-outline" as const },
     ],
   },
+  {
+    key: "ayuda",
+    label: "Soporte",
+    icon: "help-circle-outline" as const,
+    opciones: [
+      { label: "Centro de Ayuda", ruta: "/ayuda", icon: "information-circle-outline" as const },
+    ],
+  },
 ];
 
 export function NavbarLateral({ visible, onClose }: NavbarLateralProps) {

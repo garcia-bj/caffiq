@@ -46,7 +46,7 @@ function NotificationSetup() {
     if (esExpoGo || usuario?.rol !== "admin" || !token) return;
 
     obtenerExpoPushToken().then(async (pushToken) => {
-      if (!pushToken) return;
+      if (!pushToken || pushToken === "FIREBASE_NOT_CONFIGURED") return;
       try {
         await fetch(
           `${API_BASE}/api/auth/push-token`,

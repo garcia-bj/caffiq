@@ -23,6 +23,8 @@ export interface Pedido {
   estado: EstadoPedido;
   tipo_pedido: TipoPedido;
   comprobante_url: string | null;
+  motivo_rechazo: string | null;
+  hora_recogida: string | null;
   created_at: string;
   cliente?: { nom_completo: string; nom_usuario: string };
 }
@@ -49,6 +51,7 @@ export const pedidosService = {
     total: number;
     tipo_pedido: TipoPedido;
     comprobante_url?: string;
+    hora_recogida?: string;
   }) =>
     authFetch<{ pedido: Pedido }>("/pedidos", token, {
       method: "POST",
@@ -63,9 +66,9 @@ export const pedidosService = {
     return authFetch<{ pedidos: Pedido[] }>(`/cafeterias/${cafeteria_id}/pedidos${qs}`, token);
   },
 
-  actualizarEstado: (token: string, pedido_id: string, cafeteria_id: string, estado: "aprobado" | "rechazado") =>
+  actualizarEstado: (token: string, pedido_id: string, cafeteria_id: string, estado: "aprobado" | "rechazado", motivo_rechazo?: string) =>
     authFetch<{ pedido: Pedido }>(`/pedidos/${pedido_id}/estado`, token, {
       method: "PATCH",
-      body: JSON.stringify({ estado, cafeteria_id }),
+      body: JSON.stringify({ estado, cafeteria_id, motivo_rechazo }),
     }),
 };

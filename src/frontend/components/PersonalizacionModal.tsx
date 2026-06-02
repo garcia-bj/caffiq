@@ -105,7 +105,7 @@ export function PersonalizacionModal({ visible, producto, personalizaciones, car
                         </View>
                         <Text style={[styles.opcionNombre, sel && styles.opcionNombreSel]}>{opcion.nombre}</Text>
                         <Text style={[styles.opcionPrecio, sel && styles.opcionPrecioSel]}>
-                          {opcion.precio_adicional === 0 ? "Incluido" : `+$${opcion.precio_adicional.toFixed(2)}`}
+                          {opcion.precio_adicional === 0 ? "Incluido" : `+Bs. ${opcion.precio_adicional.toFixed(2)}`}
                         </Text>
                       </TouchableOpacity>
                     );
@@ -119,8 +119,8 @@ export function PersonalizacionModal({ visible, producto, personalizaciones, car
           <View style={styles.footer}>
             <View style={styles.precioRow}>
               <Text style={styles.precioLabel}>Total</Text>
-              <Text style={styles.precioValor}>${precioTotal.toFixed(2)}</Text>
-              {precioExtra > 0 && <Text style={styles.precioExtra}>(+${precioExtra.toFixed(2)} extras)</Text>}
+              <Text style={styles.precioValor}>Bs. {precioTotal.toFixed(2)}</Text>
+              {precioExtra > 0 && <Text style={styles.precioExtra}>(+Bs. {precioExtra.toFixed(2)} extras)</Text>}
             </View>
             {!todasResueltas && <Text style={styles.alertReq}>Selecciona todas las opciones requeridas *</Text>}
             <TouchableOpacity style={[styles.btnAgregar, !todasResueltas && styles.btnAgregarDisabled]} onPress={confirmar} disabled={!todasResueltas} activeOpacity={0.85}>

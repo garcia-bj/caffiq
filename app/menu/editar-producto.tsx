@@ -258,7 +258,7 @@ export default function EditarProducto() {
               Se actualizará <Text style={styles.modalNombre}>"{nombre}"</Text> en el menú.
             </Text>
             <View style={styles.modalResumen}>
-              <Text style={styles.resumenItem}>💰 Precio: ${precio}</Text>
+              <Text style={styles.resumenItem}>💰 Precio: Bs. {precio}</Text>
               <Text style={styles.resumenItem}>📦 Stock: {stock}</Text>
               <Text style={styles.resumenItem}>🔘 Estado: {badge.label}</Text>
             </View>

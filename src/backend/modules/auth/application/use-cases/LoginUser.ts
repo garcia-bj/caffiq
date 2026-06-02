@@ -48,6 +48,8 @@ export class LoginUser {
   constructor(private readonly authRepo: IAuthRepository) {}
 
   async execute(input: LoginInput): Promise<AuthOutput> {
+    input.nom_usuario = input.nom_usuario.trim().toLowerCase();
+
     const usuario = await this.authRepo.buscarPorNombreUsuario(input.nom_usuario);
     if (!usuario) throw new AppError("Credenciales inválidas", 401);
 

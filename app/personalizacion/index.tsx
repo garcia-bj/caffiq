@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   StatusBar, ActivityIndicator, Alert, TextInput, Modal, Switch,
+  KeyboardAvoidingView, Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -336,7 +337,7 @@ export default function PersonalizacionScreen() {
                       <View style={styles.opcionDot} />
                       <Text style={styles.opcionNombre}>{o.nombre}</Text>
                       <Text style={styles.opcionPrecio}>
-                        {o.precio_adicional === 0 ? "Incluido" : `+$${o.precio_adicional.toFixed(2)}`}
+                        {o.precio_adicional === 0 ? "Incluido" : `+Bs. ${o.precio_adicional.toFixed(2)}`}
                       </Text>
                       <TouchableOpacity onPress={() => abrirEditarOpcion(g, o)} hitSlop={8}>
                         <Ionicons name="create-outline" size={15} color={D.accent} />
@@ -361,7 +362,7 @@ export default function PersonalizacionScreen() {
 
       {/* Modal: Nuevo/Editar grupo */}
       <Modal visible={modalGrupo} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === "ios" ? "padding" : "height"}>
           <View style={styles.modalBox}>
             <Text style={styles.modalTitle}>
               {editandoGrupo ? "Editar grupo" : "Nuevo grupo"}
@@ -399,12 +400,12 @@ export default function PersonalizacionScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Modal: Nueva/Editar opción */}
       <Modal visible={modalOpcion} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
+        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === "ios" ? "padding" : "height"}>
           <View style={styles.modalBox}>
             <Text style={styles.modalTitle}>
               {editandoOpcion ? "Editar opción" : `Nueva opción en "${grupoActivo?.nombre}"`}
@@ -442,7 +443,7 @@ export default function PersonalizacionScreen() {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
     </SafeAreaView>

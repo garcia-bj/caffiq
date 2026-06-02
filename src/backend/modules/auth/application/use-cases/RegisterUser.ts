@@ -28,6 +28,8 @@ export class RegisterUser {
   ) {}
 
   async execute(input: RegisterInput): Promise<RegisterOutput> {
+    input.nom_usuario = input.nom_usuario.trim().toLowerCase();
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(input.nom_usuario)) {
       throw new AppError("nom_usuario debe ser un correo electrónico válido", 400);

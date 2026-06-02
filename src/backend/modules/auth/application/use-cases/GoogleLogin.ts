@@ -19,6 +19,8 @@ export class GoogleLogin {
   constructor(private readonly authRepo: IAuthRepository) {}
 
   async execute(input: GoogleLoginInput): Promise<GoogleLoginOutput> {
+    input.email = input.email.trim().toLowerCase();
+
     let usuario = await this.authRepo.buscarPorNombreUsuario(input.email);
 
     if (!usuario) {

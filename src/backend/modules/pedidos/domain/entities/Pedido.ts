@@ -23,6 +23,7 @@ export interface PedidoEntity {
   estado: EstadoPedido;
   tipo_pedido: TipoPedido;
   comprobante_url: string | null;
+  hora_recogida: string | null;
   created_at: string;
   cliente?: { nom_completo: string; nom_usuario: string };
 }
@@ -35,4 +36,5 @@ export interface CrearPedidoData {
   total: number;
   tipo_pedido: TipoPedido;
   comprobante_url?: string;
+  hora_recogida?: string;
 }
