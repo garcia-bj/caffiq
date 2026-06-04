@@ -27,9 +27,12 @@ export default function AgregarProductoMenu() {
   const [descripcion, setDescripcion] = useState("");
   const [precio, setPrecio] = useState("");
   const [stock, setStock] = useState("");
+  const [categoria, setCategoria] = useState("Café");
   const [imagen, setImagen] = useState<string | null>(null);
   const [modalConfirm, setModalConfirm] = useState(false);
   const [cargandoGuardar, setCargandoGuardar] = useState(false);
+
+  const CATEGORIAS = ["Café", "Bebidas", "Repostería", "Salados"];
 
   useEffect(() => {
     cargarSucursales();
@@ -94,6 +97,7 @@ export default function AgregarProductoMenu() {
         precio:          Number(precio),
         stock:           stock ? Number(stock) : undefined,
         imagen_producto: urlImagen || undefined,
+        categoria,
       });
 
       Alert.alert("✅ Éxito", "Producto registrado correctamente.");
@@ -179,6 +183,22 @@ export default function AgregarProductoMenu() {
           />
         </View>
 
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Categoría</Text>
+          <View style={styles.catRow}>
+            {CATEGORIAS.map((cat) => (
+              <TouchableOpacity
+                key={cat}
+                style={[styles.catChip, categoria === cat && styles.catChipSel]}
+                onPress={() => setCategoria(cat)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.catChipText, categoria === cat && styles.catChipTextSel]}>{cat}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
         <View style={styles.rowGroup}>
           <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
             <Text style={styles.label}>Precio</Text>
@@ -235,6 +255,7 @@ export default function AgregarProductoMenu() {
             <View style={styles.modalResumen}>
               <Text style={styles.resumenItem}>💰 Precio: Bs. {precio}</Text>
               <Text style={styles.resumenItem}>📦 Stock: {stock || "No especificado"}</Text>
+              <Text style={styles.resumenItem}>🏷 Categoría: {categoria}</Text>
               <Text style={styles.resumenItem}>🖼 Foto: {imagen ? "Seleccionada ✓" : "Sin foto"}</Text>
             </View>
             <View style={styles.modalBtns}>
@@ -289,6 +310,11 @@ const styles = StyleSheet.create({
   removeBtnText: { color: "#fff", fontSize: 14, fontWeight: "700" },
   changeBtn: { backgroundColor: "rgba(13,90,82,0.82)", paddingVertical: 10, alignItems: "center" },
   changeBtnText: { color: "#fff", fontSize: 14, fontWeight: "600" },
+  catRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
+  catChip: { borderRadius: 10, borderWidth: 1.5, borderColor: "#C5D9CE", paddingVertical: 10, paddingHorizontal: 18, backgroundColor: "rgba(255,255,255,0.6)" },
+  catChipSel: { borderColor: "#0D5A52", backgroundColor: "#0D5A52" },
+  catChipText: { fontSize: 14, fontWeight: "600", color: "#6FA58B" },
+  catChipTextSel: { color: "#fff" },
   btnRegistrar: { backgroundColor: "#541A1A", borderRadius: 30, paddingVertical: 16, alignItems: "center", marginTop: 24 },
   btnText: { color: "#fff", fontSize: 17, fontWeight: "700" },
   modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center" },

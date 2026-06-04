@@ -69,6 +69,7 @@ export class SupabaseProductoRepository implements IProductoRepository {
         precio:          datos.precio,
         stock:           datos.stock          ?? null,
         imagen_producto: datos.imagen_producto ?? null,
+        categoria:       datos.categoria      ?? 'General',
         estado:          stockNum > 0,
       }])
       .select()
@@ -94,6 +95,7 @@ export class SupabaseProductoRepository implements IProductoRepository {
     if (datos.stock         !== undefined) update.stock          = datos.stock;
     if (datos.imagen_producto !== undefined) update.imagen_producto = datos.imagen_producto;
     if (datos.estado        !== undefined) update.estado         = datos.estado;
+    if (datos.categoria     !== undefined) update.categoria      = datos.categoria;
 
     const { data, error } = await supabaseAdmin
       .from(PRODUCTO)

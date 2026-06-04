@@ -6,6 +6,7 @@ export interface ProductoEntity {
   stock: number | null;
   estado: boolean | null;
   imagen_producto: string | null;
+  categoria: string;
 }
 
 export interface CrearProductoData {
@@ -15,6 +16,7 @@ export interface CrearProductoData {
   precio: number;
   stock?: number;
   imagen_producto?: string;
+  categoria?: string;
 }
 
 export interface ModificarProductoData {
@@ -24,6 +26,7 @@ export interface ModificarProductoData {
   stock?: number;
   imagen_producto?: string;
   estado?: boolean;
+  categoria?: string;
 }
 
 export const toPublico = (p: ProductoEntity, cafeteria_id: string) => ({
@@ -35,7 +38,7 @@ export const toPublico = (p: ProductoEntity, cafeteria_id: string) => ({
   imagen_url:   p.imagen_producto ?? null,
   disponible:   p.estado         ?? false,
   stock:        p.stock          ?? null,
-  categoria:    "General",
+  categoria:    p.categoria      ?? "General",
   badge:        null as string | null,
   created_at:   "",
 });

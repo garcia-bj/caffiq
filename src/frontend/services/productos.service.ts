@@ -22,6 +22,7 @@ export interface ProductoInput {
   precio: number | string;
   stock?: number | string;
   imagen_producto?: string;
+  categoria?: string;
 }
 
 export interface ProductoEditInput {
@@ -31,6 +32,7 @@ export interface ProductoEditInput {
   stock?: number | string;
   imagen_producto?: string;
   estado?: boolean;
+  categoria?: string;
 }
 
 const authFetch = async <T>(

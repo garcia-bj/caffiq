@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   View, Text, StyleSheet, FlatList, Image,
-  TouchableOpacity, ActivityIndicator, Alert,
+  TouchableOpacity, ActivityIndicator, Alert, ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
@@ -102,6 +102,9 @@ function ProductoCard({
       </View>
 
       <View style={styles.productoInfo}>
+        <View style={styles.catBadge}>
+          <Text style={styles.catBadgeText}>{item.categoria || "General"}</Text>
+        </View>
         <Text style={styles.productoNombre} numberOfLines={2}>{item.nombre}</Text>
         {item.descripcion ? (
           <Text style={styles.productoDesc} numberOfLines={2}>{item.descripcion}</Text>
@@ -158,6 +161,9 @@ export default function SucursalMenuScreen() {
   const [cargandoPers, setCargandoPers] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [productoSeleccionado, setProductoSeleccionado] = useState<ProductoPublico | null>(null);
+  const [catActiva, setCatActiva] = useState("Todas");
+
+  const CATEGORIAS = ["Todas", "Café", "Bebidas", "Repostería", "Salados"];
 
   const cargar = useCallback(async () => {
     if (!token || !cafeteria_id || !sucursal_id) return;
@@ -314,8 +320,25 @@ export default function SucursalMenuScreen() {
               <Text style={styles.warnBannerTxt}>La sucursal cierra pronto</Text>
             </View>
           ) : null}
+
+          {/* ── Filtro de categorías ── */}
+          <View style={styles.catRow}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catScroll}>
+              {CATEGORIAS.map((cat) => (
+                <TouchableOpacity
+                  key={cat}
+                  style={[styles.catChip, catActiva === cat && styles.catChipSel]}
+                  onPress={() => setCatActiva(cat)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.catChipText, catActiva === cat && styles.catChipTextSel]}>{cat}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
           <FlatList
-            data={productos}
+            data={catActiva === "Todas" ? productos : productos.filter((p) => p.categoria === catActiva)}
             keyExtractor={(item) => item.id}
             renderItem={renderItem}
             numColumns={2}
@@ -416,6 +439,8 @@ const styles = StyleSheet.create({
   productoImg:     { width: "100%", height: "100%" },
   productoEmoji:   { fontSize: 44 },
   productoInfo:    { paddingHorizontal: 10, paddingTop: 8, gap: 3 },
+  catBadge: { alignSelf: "flex-start", backgroundColor: D.accentBg, borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2, marginBottom: 4 },
+  catBadgeText: { fontSize: 9, fontWeight: "700", color: D.accent, textTransform: "uppercase" },
   productoNombre:  { fontSize: 13, fontWeight: "700", color: D.primary },
   productoDesc:    { fontSize: 11, color: D.secondary, lineHeight: 15 },
 
@@ -446,6 +471,12 @@ const styles = StyleSheet.create({
   cerradoHorarioTxt:{ fontSize: 13, color: D.secondary, fontWeight: "600" },
   warnBanner: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#FFF8E1", paddingHorizontal: 16, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: "#FFE082" },
   warnBannerTxt: { fontSize: 12, color: "#B45309", fontWeight: "600" },
+  catRow: { backgroundColor: "#fff", paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: D.border },
+  catScroll: { paddingHorizontal: 14, gap: 8 },
+  catChip: { borderRadius: 20, borderWidth: 1.5, borderColor: D.border, paddingVertical: 6, paddingHorizontal: 16, backgroundColor: "#fff" },
+  catChipSel: { borderColor: D.accent, backgroundColor: D.accent },
+  catChipText: { fontSize: 12, fontWeight: "600", color: D.secondary },
+  catChipTextSel: { color: "#fff" },
   center:    { flex: 1, alignItems: "center", justifyContent: "center", gap: 10, paddingTop: 60 },
   errorText: { color: "#D32F2F", fontSize: 13, textAlign: "center", paddingHorizontal: 20 },
   retryBtn:  { backgroundColor: D.accent, borderRadius: 10, paddingHorizontal: 20, paddingVertical: 10 },
