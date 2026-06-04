@@ -64,6 +64,7 @@ function ProductoCard({
   cartQuantity: number;
   onAgregar: (producto: ProductoPublico) => void;
 }) {
+  const { fs, hp } = useResponsive();
   const stockLimite = item.stock !== null && item.stock !== undefined;
   const atLimit     = stockLimite && cartQuantity >= (item.stock as number);
   const remaining   = stockLimite ? (item.stock as number) - cartQuantity : null;
