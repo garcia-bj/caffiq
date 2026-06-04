@@ -1,5 +1,6 @@
 import { useNavbar } from "@/frontend/context/NavbarContext";
 import { LocationPickerButton } from "@/frontend/components/LocationPickerButton";
+import { DrumRollTimePicker } from "@/frontend/components/DrumRollTimePicker";
 import * as ImagePicker from "expo-image-picker";
 import React, { useState } from "react";
 import {
@@ -27,8 +28,16 @@ export default function AgregarSucursal() {
   const [nombre, setNombre] = useState("");
   const [direccion, setDireccion] = useState("");
   const [ciudad, setCiudad] = useState("");
-  const [horarioApertura, setHorarioApertura] = useState("");
-  const [horarioCierre, setHorarioCierre] = useState("");
+  const [apH, setApH] = useState("08");
+  const [apM, setApM] = useState("00");
+  const [ciH, setCiH] = useState("20");
+  const [ciM, setCiM] = useState("00");
+
+  const horarioApertura = `${apH}:${apM}`;
+  const horarioCierre   = `${ciH}:${ciM}`;
+
+  const ALL_HOURS   = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
+  const ALL_MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0"));
   const [latitud, setLatitud] = useState<number | null>(null);
   const [longitud, setLongitud] = useState<number | null>(null);
   const [imagen, setImagen] = useState<string | null>(null);
@@ -83,8 +92,8 @@ export default function AgregarSucursal() {
         nombre,
         direccion,
         ciudad,
-        horario_apertura: horarioApertura.trim() || undefined,
-        horario_cierre:   horarioCierre.trim()   || undefined,
+        horario_apertura: horarioApertura,
+        horario_cierre:   horarioCierre,
         imagen_url,
         latitud,
         longitud,
@@ -94,8 +103,6 @@ export default function AgregarSucursal() {
       setNombre("");
       setDireccion("");
       setCiudad("");
-      setHorarioApertura("");
-      setHorarioCierre("");
       setLatitud(null);
       setLongitud(null);
       setImagen(null);
@@ -160,33 +167,36 @@ export default function AgregarSucursal() {
 
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Horario de atención <Text style={styles.labelOpcional}>(opcional)</Text></Text>
-          <Text style={styles.labelHint}>Formato 24h — ejemplo: 08:00 · 20:30</Text>
+          <Text style={styles.labelHint}>Desliza para ajustar apertura y cierre</Text>
+
           <View style={styles.horarioRow}>
             <View style={styles.horarioField}>
               <Text style={styles.horarioLabel}>Apertura</Text>
-              <TextInput
-                style={styles.input}
-                value={horarioApertura}
-                onChangeText={setHorarioApertura}
-                placeholder="08:00"
-                placeholderTextColor="#aaa"
-                keyboardType="numeric"
-                maxLength={5}
+              <DrumRollTimePicker
+                hours={ALL_HOURS}
+                minutes={ALL_MINUTES}
+                initialHour={apH}
+                initialMinute={apM}
+                onHourChange={setApH}
+                onMinuteChange={setApM}
+                accentColor="#0D5A52"
               />
             </View>
+
             <View style={styles.horarioSep}>
               <Text style={styles.horarioSepTxt}>→</Text>
             </View>
+
             <View style={styles.horarioField}>
               <Text style={styles.horarioLabel}>Cierre</Text>
-              <TextInput
-                style={styles.input}
-                value={horarioCierre}
-                onChangeText={setHorarioCierre}
-                placeholder="20:00"
-                placeholderTextColor="#aaa"
-                keyboardType="numeric"
-                maxLength={5}
+              <DrumRollTimePicker
+                hours={ALL_HOURS}
+                minutes={ALL_MINUTES}
+                initialHour={ciH}
+                initialMinute={ciM}
+                onHourChange={setCiH}
+                onMinuteChange={setCiM}
+                accentColor="#0D5A52"
               />
             </View>
           </View>
@@ -313,11 +323,11 @@ const styles = StyleSheet.create({
     paddingVertical: 16, alignItems: "center", marginTop: 24,
   },
   btnText: { color: "#fff", fontSize: 17, fontWeight: "700" },
-  horarioRow:   { flexDirection: "row", alignItems: "flex-end", gap: 8 },
-  horarioField: { flex: 1 },
-  horarioLabel: { fontSize: 11, color: "#7a9a8a", fontWeight: "600", marginBottom: 4 },
-  horarioSep:   { paddingBottom: 12, alignItems: "center" },
-  horarioSepTxt:{ fontSize: 16, color: "#6FA58B", fontWeight: "700" },
+  horarioRow:   { flexDirection: "row", alignItems: "center", gap: 8 },
+  horarioField: { flex: 1, alignItems: "center" },
+  horarioLabel: { fontSize: 11, color: "#7a9a8a", fontWeight: "600", marginBottom: 6, alignSelf: "flex-start" },
+  horarioSep:   { alignItems: "center", paddingTop: 22 },
+  horarioSepTxt:{ fontSize: 18, color: "#6FA58B", fontWeight: "700" },
   modalOverlay: {
     flex: 1, backgroundColor: "rgba(0,0,0,0.5)",
     alignItems: "center", justifyContent: "center",

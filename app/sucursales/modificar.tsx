@@ -8,6 +8,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { useNavbar } from "@/frontend/context/NavbarContext";
 import { LocationPickerButton } from "@/frontend/components/LocationPickerButton";
+import { DrumRollTimePicker } from "@/frontend/components/DrumRollTimePicker";
 import { useAuth } from "@/frontend/context/AuthContext";
 import { sucursalesService, type SucursalPublica } from "@/frontend/services/sucursales.service";
 import { subirImagenCloudinary } from "@/frontend/services/cloudinary.service";
@@ -29,6 +30,15 @@ export default function ModificarSucursal() {
   const [longitud, setLongitud] = useState<number | null>(null);
   const [imagenActual, setImagenActual] = useState<string | null>(null);
   const [modalConfirm, setModalConfirm] = useState(false);
+  const [apH, setApH] = useState("08");
+  const [apM, setApM] = useState("00");
+  const [ciH, setCiH] = useState("20");
+  const [ciM, setCiM] = useState("00");
+
+  const horarioApertura = `${apH}:${apM}`;
+  const horarioCierre   = `${ciH}:${ciM}`;
+  const ALL_HOURS   = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
+  const ALL_MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0"));
 
   useEffect(() => {
     if (!token || !usuario?.cafeteria_id) return;
@@ -46,6 +56,10 @@ export default function ModificarSucursal() {
     setLatitud(s.latitud  ?? null);
     setLongitud(s.longitud ?? null);
     setImagenActual(s.imagen_url ?? null);
+    const [ah = "08", am = "00"] = (s.horario_apertura ?? "08:00").split(":");
+    const [ch = "20", cm = "00"] = (s.horario_cierre   ?? "20:00").split(":");
+    setApH(ah); setApM(am);
+    setCiH(ch); setCiM(cm);
     setDropdownOpen(false);
   };
 
@@ -83,7 +97,9 @@ export default function ModificarSucursal() {
 
       const { sucursal } = await sucursalesService.modificar(
         token, usuario.cafeteria_id, seleccionada.id,
-        { nombre, direccion, ciudad, imagen_url, latitud, longitud }
+        { nombre, direccion, ciudad, imagen_url, latitud, longitud,
+          horario_apertura: horarioApertura,
+          horario_cierre:   horarioCierre }
       );
       setModalConfirm(false);
       Alert.alert("Éxito", "Sucursal actualizada correctamente.");
@@ -92,6 +108,8 @@ export default function ModificarSucursal() {
       setNombre(""); setDireccion(""); setCiudad("");
       setLatitud(null); setLongitud(null);
       setImagenActual(null);
+      setApH("08"); setApM("00");
+      setCiH("20"); setCiM("00");
     } catch (error: any) {
       setModalConfirm(false);
       Alert.alert("Error", error.message ?? "No se pudo actualizar la sucursal");
@@ -170,6 +188,50 @@ export default function ModificarSucursal() {
         </View>
 
         <View style={styles.inputGroup}>
+          <Text style={styles.label}>Horario de atención <Text style={styles.labelOpcional}>(opcional)</Text></Text>
+          <Text style={styles.labelHint}>Desliza para ajustar apertura y cierre</Text>
+          <View style={styles.horarioRow}>
+            <View style={styles.horarioField}>
+              <Text style={styles.horarioLabel}>Apertura</Text>
+              {seleccionada ? (
+                <DrumRollTimePicker
+                  key={`ap_${seleccionada.id}`}
+                  hours={ALL_HOURS}
+                  minutes={ALL_MINUTES}
+                  initialHour={apH}
+                  initialMinute={apM}
+                  onHourChange={setApH}
+                  onMinuteChange={setApM}
+                  accentColor="#0D5A52"
+                />
+              ) : (
+                <View style={styles.drumPlaceholder}><Text style={styles.drumPlaceholderText}>--:--</Text></View>
+              )}
+            </View>
+            <View style={styles.horarioSep}>
+              <Text style={styles.horarioSepTxt}>→</Text>
+            </View>
+            <View style={styles.horarioField}>
+              <Text style={styles.horarioLabel}>Cierre</Text>
+              {seleccionada ? (
+                <DrumRollTimePicker
+                  key={`ci_${seleccionada.id}`}
+                  hours={ALL_HOURS}
+                  minutes={ALL_MINUTES}
+                  initialHour={ciH}
+                  initialMinute={ciM}
+                  onHourChange={setCiH}
+                  onMinuteChange={setCiM}
+                  accentColor="#0D5A52"
+                />
+              ) : (
+                <View style={styles.drumPlaceholder}><Text style={styles.drumPlaceholderText}>--:--</Text></View>
+              )}
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.inputGroup}>
           <Text style={styles.label}>
             Ubicación en el mapa <Text style={styles.labelOpcional}>(opcional)</Text>
           </Text>
@@ -230,6 +292,7 @@ export default function ModificarSucursal() {
             <View style={styles.modalResumen}>
               <Text style={styles.resumenItem}>Dirección: {direccion}</Text>
               <Text style={styles.resumenItem}>Ciudad: {ciudad}</Text>
+              <Text style={styles.resumenItem}>Horario: {horarioApertura} – {horarioCierre}</Text>
               <Text style={styles.resumenItem}>
                 Ubicación: {latitud != null ? `${latitud.toFixed(5)}, ${longitud!.toFixed(5)}` : "Sin marcar"}
               </Text>
@@ -276,6 +339,13 @@ const styles = StyleSheet.create({
   label: { fontSize: 14, color: "#2C1819", marginBottom: 4, fontWeight: "500" },
   labelOpcional: { fontSize: 12, color: "#7a9a8a", fontWeight: "400" },
   labelHint: { fontSize: 12, color: "#7a9a8a", marginBottom: 8 },
+  horarioRow:   { flexDirection: "row", alignItems: "center", gap: 8 },
+  horarioField: { flex: 1, alignItems: "center" },
+  horarioLabel: { fontSize: 11, color: "#7a9a8a", fontWeight: "600", marginBottom: 6, alignSelf: "flex-start" },
+  horarioSep:   { alignItems: "center", paddingTop: 22 },
+  horarioSepTxt:{ fontSize: 18, color: "#6FA58B", fontWeight: "700" },
+  drumPlaceholder: { height: 250, backgroundColor: "#f0f0f0", borderRadius: 16, alignItems: "center", justifyContent: "center", width: "100%" },
+  drumPlaceholderText: { fontSize: 20, color: "#bbb", fontWeight: "700" },
   input: {
     backgroundColor: "#6FA58B", borderRadius: 8,
     paddingHorizontal: 14, paddingVertical: 12,

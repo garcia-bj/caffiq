@@ -61,5 +61,7 @@ app-example
 # Claude Code
 .claude/
 
+./docs
+
 # planificacion y notas locales
 planificacion/

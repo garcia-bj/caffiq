@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { View, Text, StyleSheet, FlatList, Image, TouchableOpacity, Alert, Modal, ScrollView, ActivityIndicator, TextInput } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -8,8 +8,10 @@ import { useAuth } from "@/frontend/context/AuthContext";
 import { useCart, type CartItem, type TipoPedidoItem } from "@/frontend/context/CartContext";
 import { cafeteriasService } from "@/frontend/services/cafeterias.service";
 import { pedidosService, type PedidoItem, type TipoPedido } from "@/frontend/services/pedidos.service";
+import { sucursalesService } from "@/frontend/services/sucursales.service";
 import { subirImagenCloudinary } from "@/frontend/services/cloudinary.service";
 import { useResponsive } from "@/frontend/hooks/use-responsive";
+import { DrumRollPicker } from "@/frontend/components/DrumRollTimePicker";
 
 const D = {
   bg:         "#EDF7F4",
@@ -126,22 +128,45 @@ export default function CarritoScreen() {
   const [cargandoQr, setCargandoQr]    = useState(false);
 
   const [horaRecogida, setHoraRecogida] = useState<string | null>(null);
+  const [horarioCierre, setHorarioCierre] = useState<string | null>(null);
 
   const tieneLlevar = items.some((i) => i.tipo_pedido === "llevar");
 
-  const slotsHora = (() => {
-    const ahora = new Date();
-    const inicio = new Date(ahora);
-    inicio.setMinutes(Math.ceil(inicio.getMinutes() / 15) * 15, 0, 0);
-    const slots: { label: string; value: string }[] = [];
-    for (let i = 0; i < 24; i++) {
-      const d = new Date(inicio.getTime() + i * 15 * 60 * 1000);
-      const h = d.getHours().toString().padStart(2, "0");
-      const m = d.getMinutes().toString().padStart(2, "0");
-      slots.push({ label: `${h}:${m}`, value: d.toISOString() });
+  // Load sucursal business hours
+  useEffect(() => {
+    if (!sucursal_id) return;
+    sucursalesService.listarTodas()
+      .then((list) => {
+        const s = list.find((x) => x.id === sucursal_id);
+        if (s?.horario_cierre) setHorarioCierre(s.horario_cierre);
+      })
+      .catch(() => {});
+  }, [sucursal_id]);
+
+  const slotsHora = useMemo((): string[] => {
+    const now = new Date();
+    const baseMin = now.getHours() * 60 + now.getMinutes() + 1; // próximo minuto
+    let endMin: number;
+    if (horarioCierre) {
+      const [ciH, ciM] = horarioCierre.split(":").map(Number);
+      endMin = ciH * 60 + ciM;
+    } else {
+      endMin = baseMin + 6 * 60; // 6 horas adelante
+    }
+    const slots: string[] = [];
+    for (let m = baseMin; m <= endMin; m += 1) {
+      const hh = Math.floor(m / 60) % 24;
+      const mm = m % 60;
+      slots.push(`${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`);
     }
     return slots;
-  })();
+  }, [horarioCierre]);
+
+  // Auto-select first slot when slots change
+  useEffect(() => {
+    if (slotsHora.length === 0) { setHoraRecogida(null); return; }
+    setHoraRecogida((prev) => (prev && slotsHora.includes(prev) ? prev : slotsHora[0]));
+  }, [slotsHora.join(",")]);
 
   const handleVaciar = () =>
     Alert.alert("Vaciar carrito", "¿Eliminar todos los productos?", [
@@ -264,35 +289,34 @@ export default function CarritoScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.horaTitle, { fontSize: fs(14) }]}>Hora de recogida</Text>
-                    <Text style={styles.horaSub}>Toca la hora para seleccionar</Text>
+                    <Text style={styles.horaSub}>Desliza para elegir la hora</Text>
                   </View>
+                  {horaRecogida && (
+                    <View style={styles.horaChipConfirm}>
+                      <Ionicons name="checkmark-circle" size={fs(13)} color="#1B5E20" />
+                      <Text style={[styles.horaChipConfirmText, { fontSize: fs(12) }]}>{horaRecogida}</Text>
+                    </View>
+                  )}
                 </View>
-                <View style={styles.slotsGrid}>
-                  {slotsHora.map((s) => {
-                    const sel = horaRecogida === s.value;
-                    return (
-                      <TouchableOpacity
-                        key={s.value}
-                        style={[styles.slotChip, sel && styles.slotChipSel]}
-                        onPress={() => setHoraRecogida(sel ? null : s.value)}
-                        activeOpacity={0.8}
-                      >
-                        <Ionicons name={sel ? "checkmark-circle" : "time-outline"} size={fs(12)} color={sel ? "#fff" : "#B45309"} />
-                        <Text style={[styles.slotChipText, sel && styles.slotChipTextSel]}>{s.label}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-                {horaRecogida && (
-                  <View style={styles.horaConfirmada}>
-                    <Ionicons name="checkmark-circle" size={fs(16)} color="#1B5E20" />
-                    <Text style={[styles.horaConfirmadaText, { fontSize: fs(13) }]}>
-                      Recoger a las {new Date(horaRecogida).toLocaleTimeString("es-BO", { hour: "2-digit", minute: "2-digit" })}
-                    </Text>
+
+                {slotsHora.length === 0 ? (
+                  <View style={styles.cerradoBox}>
+                    <Ionicons name="time-outline" size={22} color="#B45309" />
+                    <Text style={styles.cerradoText}>El local está fuera del horario de atención</Text>
                   </View>
+                ) : (
+                  <DrumRollPicker
+                    key={slotsHora.join(",")}
+                    items={slotsHora}
+                    initialValue={horaRecogida ?? slotsHora[0]}
+                    onChange={(v) => setHoraRecogida(v)}
+                    accentColor="#B45309"
+                    width={150}
+                  />
                 )}
-                {!horaRecogida && (
-                  <Text style={[styles.horaWarning, { fontSize: fs(11) }]}>Selecciona una hora para continuar</Text>
+
+                {!horaRecogida && slotsHora.length > 0 && (
+                  <Text style={[styles.horaWarning, { fontSize: fs(11) }]}>Desliza para seleccionar la hora</Text>
                 )}
               </View>
             )}
@@ -541,17 +565,14 @@ const styles = StyleSheet.create({
   exitoBtnText: { color: "#fff", fontWeight: "800", fontSize: 15 },
   enviandoText: { fontSize: 16, color: D.primary, fontWeight: "600", marginTop: 12 },
 
-  horaSection: { marginTop: 4, borderTopWidth: 1, borderTopColor: D.border, paddingTop: 14, backgroundColor: "#FFFBF0", borderRadius: 14, paddingHorizontal: 14, paddingBottom: 14, borderWidth: 1.5, borderColor: "#FDE68A" },
-  horaHeaderRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 14 },
+  horaSection: { marginTop: 4, borderTopWidth: 1, borderTopColor: D.border, paddingTop: 14, backgroundColor: "#FFFBF0", borderRadius: 14, paddingHorizontal: 14, paddingBottom: 16, borderWidth: 1.5, borderColor: "#FDE68A", alignItems: "center" },
+  horaHeaderRow: { flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 14, width: "100%" },
   horaIconWrap: { width: 40, height: 40, borderRadius: 12, backgroundColor: "#FFF8E1", alignItems: "center", justifyContent: "center" },
   horaTitle: { fontSize: 14, fontWeight: "800", color: "#B45309" },
   horaSub: { fontSize: 11, color: D.secondary, marginTop: 2 },
-  slotsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 8 },
-  slotChip: { flexDirection: "row", alignItems: "center", gap: 4, borderRadius: 8, borderWidth: 1.5, borderColor: D.border, paddingVertical: 7, paddingHorizontal: 10, backgroundColor: D.card, minWidth: 68, justifyContent: "center" },
-  slotChipSel: { borderColor: "#B45309", backgroundColor: "#B45309" },
-  slotChipText: { fontSize: 12, fontWeight: "700", color: "#B45309" },
-  slotChipTextSel: { color: "#fff" },
-  horaConfirmada: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 12, backgroundColor: "#E8F5E9", borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 },
-  horaConfirmadaText: { fontSize: 13, fontWeight: "700", color: "#1B5E20" },
+  horaChipConfirm: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#E8F5E9", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  horaChipConfirmText: { fontWeight: "700", color: "#1B5E20" },
+  cerradoBox: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#FFF8E1", borderRadius: 10, paddingHorizontal: 16, paddingVertical: 14 },
+  cerradoText: { fontSize: 13, color: "#B45309", fontWeight: "600", flex: 1 },
   horaWarning: { fontSize: 11, color: "#DC2626", fontWeight: "600", marginTop: 10, textAlign: "center" },
 });
