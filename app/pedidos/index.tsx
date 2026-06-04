@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/frontend/context/AuthContext";
 import { useNavbar } from "@/frontend/context/NavbarContext";
 import { pedidosService, type Pedido, type EstadoPedido, type TipoPedido } from "@/frontend/services/pedidos.service";
+import { useResponsive } from "@/frontend/hooks/use-responsive";
 
 const D = {
   bg:       "#f5f0eb",
@@ -225,6 +226,7 @@ function PedidoCard({
 export default function PedidosAdminScreen() {
   const { token, usuario } = useAuth();
   const { open: openNavbar } = useNavbar();
+  const { fs } = useResponsive();
   const [tabActiva, setTabActiva] = useState<Tab>("pendiente");
   const [pedidos, setPedidos] = useState<Record<Tab, Pedido[]>>({
     pendiente: [], aprobado: [], rechazado: [],

@@ -2,6 +2,7 @@ import { useNavbar } from "@/frontend/context/NavbarContext";
 import { useAuth } from "@/frontend/context/AuthContext";
 import { sucursalesService, type SucursalPublica } from "@/frontend/services/sucursales.service";
 import { productosService, type ProductoPublico } from "@/frontend/services/productos.service";
+import { useResponsive } from "@/frontend/hooks/use-responsive";
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import {
@@ -20,6 +21,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 export default function ModificarProductoMenu() {
   const router = useRouter();
   const { token, usuario } = useAuth();
+  const { fs } = useResponsive();
   const { open: openNavbar } = useNavbar();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [sucursales, setSucursales] = useState<SucursalPublica[]>([]);

@@ -13,6 +13,7 @@ import {
   type Personalizacion, type OpcionPersonalizacion,
 } from "@/frontend/services/personalizaciones.service";
 import { sucursalesService, type SucursalPublica } from "@/frontend/services/sucursales.service";
+import { useResponsive } from "@/frontend/hooks/use-responsive";
 
 const D = {
   bg:      "#f5f0eb",
@@ -39,6 +40,7 @@ interface OpcionFormState {
 
 export default function PersonalizacionScreen() {
   const { token, usuario } = useAuth();
+  const { fs } = useResponsive();
   const { open: openNavbar } = useNavbar();
 
   // Sucursal selector

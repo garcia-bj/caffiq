@@ -16,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Caffiq } from "@/frontend/constants/theme";
 import { useAuth } from "@/frontend/context/AuthContext";
 import { authService } from "@/frontend/services/auth.service";
+import { useResponsive } from "@/frontend/hooks/use-responsive";
 
 const CODE_LENGTH = 6;
 const RESEND_SECONDS = 60;
@@ -24,6 +25,7 @@ export default function VerifyPhoneScreen() {
   const { usuario_id, telefono, from_google } = useLocalSearchParams<{ usuario_id: string; telefono: string; from_google?: string }>();
   const { token } = useAuth();
   const { setSession } = useAuth();
+  const { fs } = useResponsive();
 
   const [code, setCode]             = useState<string[]>(Array(CODE_LENGTH).fill(""));
   const [loading, setLoading]       = useState(false);

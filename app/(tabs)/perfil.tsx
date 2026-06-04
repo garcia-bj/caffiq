@@ -6,6 +6,7 @@ import { router } from "expo-router";
 import Constants from "expo-constants";
 import { useAuth } from "@/frontend/context/AuthContext";
 import { authService } from "@/frontend/services/auth.service";
+import { useResponsive } from "@/frontend/hooks/use-responsive";
 import { obtenerExpoPushToken } from "@/frontend/services/notifications.service";
 
 const esExpoGo = Constants.appOwnership === "expo";
@@ -57,6 +58,7 @@ function EditRow({ icon, label, value, onChange, placeholder, keyboardType }: {
 
 export default function PerfilScreen() {
   const { usuario, token, setUsuario, logout } = useAuth() as any;
+  const { fs } = useResponsive();
   const [loggingOut, setLoggingOut] = useState(false);
   const [editMode,   setEditMode]   = useState(false);
   const [saving,     setSaving]     = useState(false);

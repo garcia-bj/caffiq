@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Caffiq } from "@/frontend/constants/theme";
 import { authService } from "@/frontend/services/auth.service";
+import { useResponsive } from "@/frontend/hooks/use-responsive";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -23,6 +24,7 @@ export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const { fs } = useResponsive();
 
   const handleSolicitar = async () => {
     const trimmed = email.trim().toLowerCase();

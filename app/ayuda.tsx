@@ -1,6 +1,7 @@
 import { useAuth } from "@/frontend/context/AuthContext";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
+import { useResponsive } from "@/frontend/hooks/use-responsive";
 import { useState } from "react";
 import {
   Linking,
@@ -117,6 +118,7 @@ function Accordion({
 
 export default function AyudaScreen() {
   const { usuario } = useAuth() as any;
+  const { fs } = useResponsive();
   const isAdmin = usuario?.rol === "admin";
   const faq = isAdmin ? faqAdmin : faqCliente;
 

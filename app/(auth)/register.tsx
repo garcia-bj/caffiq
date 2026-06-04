@@ -1,6 +1,7 @@
 import { Caffiq } from "@/frontend/constants/theme";
 import { useAuth } from "@/frontend/context/AuthContext";
 import { authService } from "@/frontend/services/auth.service";
+import { useResponsive } from "@/frontend/hooks/use-responsive";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
@@ -335,6 +336,7 @@ function LogoPicker({
 // ─── Screen ──────────────────────────────────────────────────────────────────
 export default function RegisterScreen() {
   const { loginWithGoogle } = useAuth();
+  const { fs } = useResponsive();
   const [rol, setRol] = useState<Rol>("cliente");
 
   const [nomCompleto, setNomCompleto] = useState("");

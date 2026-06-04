@@ -7,6 +7,7 @@ import {
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/frontend/context/AuthContext";
+import { useResponsive } from "@/frontend/hooks/use-responsive";
 
 const { width } = Dimensions.get("window");
 const DRAWER_WIDTH = width * 0.72;
@@ -81,6 +82,7 @@ const MENU_SECTIONS = [
 ];
 
 export function NavbarLateral({ visible, onClose }: NavbarLateralProps) {
+  const { fs } = useResponsive();
   const router = useRouter();
   const { usuario, logout } = useAuth();
 

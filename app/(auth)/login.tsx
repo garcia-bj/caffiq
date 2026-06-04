@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Caffiq } from "@/frontend/constants/theme";
 import { useAuth } from "@/frontend/context/AuthContext";
+import { useResponsive } from "@/frontend/hooks/use-responsive";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -89,6 +90,7 @@ function Field({
 
 export default function LoginScreen() {
   const { login, loginWithGoogle } = useAuth();
+  const { fs } = useResponsive();
   const [nomUsuario, setNomUsuario] = useState("");
   const [password,   setPassword]   = useState("");
   const [errors,     setErrors]     = useState<Errors>({});
@@ -165,10 +167,10 @@ export default function LoginScreen() {
 
             {/* Logo */}
             <View style={styles.logoWrapper}>
-              <View style={styles.logoCircle}>
-                <Image source={require("../../assets/images/icon.png")} style={styles.logoImage} />
+              <View style={[styles.logoCircle, { width: fs(90), height: fs(90), borderRadius: fs(45) }]}>
+                <Image source={require("../../assets/images/icon.png")} style={[styles.logoImage, { width: fs(68), height: fs(68), borderRadius: fs(34) }]} />
               </View>
-              <Text style={styles.logoText}>CAFFIQ</Text>
+              <Text style={[styles.logoText, { fontSize: fs(20) }]}>CAFFIQ</Text>
             </View>
 
             {/* Formulario */}

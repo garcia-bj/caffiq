@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { ProductoPublico } from "@/frontend/services/productos.service";
 import type { Personalizacion, OpcionPersonalizacion } from "@/frontend/services/personalizaciones.service";
 import type { OpcionSeleccionada } from "@/frontend/context/CartContext";
+import { useResponsive } from "@/frontend/hooks/use-responsive";
 
 const D = {
   bg:         "#ffffff",
@@ -30,6 +31,7 @@ interface Props {
 }
 
 export function PersonalizacionModal({ visible, producto, personalizaciones, cargando, onConfirmar, onCancelar }: Props) {
+  const { fs } = useResponsive();
   const [seleccion, setSeleccion] = useState<Record<string, OpcionPersonalizacion>>({});
 
   const seleccionar = (pers: Personalizacion, opcion: OpcionPersonalizacion) =>

@@ -8,6 +8,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/frontend/context/AuthContext";
 import { sucursalesService, type SucursalPublica } from "@/frontend/services/sucursales.service";
+import { useResponsive } from "@/frontend/hooks/use-responsive";
 
 const D = {
   bg:           "#EDF7F4",
@@ -150,6 +151,7 @@ function SucursalItem({
 export default function CafeteriaDetailScreen() {
   const { id, nom_cafeteria }   = useLocalSearchParams<{ id: string; nom_cafeteria: string }>();
   const { token, usuario }      = useAuth();
+  const { fs } = useResponsive();
   const isAdmin = usuario?.rol === "admin" && usuario?.cafeteria_id === id;
 
   const [sucursales, setSucursales] = useState<SucursalPublica[]>([]);

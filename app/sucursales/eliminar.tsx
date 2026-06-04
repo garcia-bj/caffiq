@@ -8,9 +8,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavbar } from "@/frontend/context/NavbarContext";
 import { useAuth } from "@/frontend/context/AuthContext";
 import { sucursalesService, type SucursalPublica } from "@/frontend/services/sucursales.service";
+import { useResponsive } from "@/frontend/hooks/use-responsive";
 
 export default function EliminarSucursal() {
   const { token, usuario } = useAuth();
+  const { fs } = useResponsive();
   const { open: openNavbar } = useNavbar();
   const [sucursales, setSucursales] = useState<SucursalPublica[]>([]);
   const [cargandoLista, setCargandoLista] = useState(true);

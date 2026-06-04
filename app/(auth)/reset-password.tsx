@@ -16,6 +16,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Caffiq } from "@/frontend/constants/theme";
 import { authService } from "@/frontend/services/auth.service";
+import { useResponsive } from "@/frontend/hooks/use-responsive";
 
 const CODE_LENGTH = 6;
 
@@ -29,6 +30,7 @@ export default function ResetPasswordScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [enviandoCodigo, setEnviandoCodigo] = useState(false);
+  const { fs } = useResponsive();
   const inputRef = useRef<TextInput>(null);
 
   const handleCodigoChange = (v: string) => {

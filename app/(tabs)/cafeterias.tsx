@@ -7,6 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavbar } from "@/frontend/context/NavbarContext";
+import { useResponsive } from "@/frontend/hooks/use-responsive";
 import { useAuth } from "@/frontend/context/AuthContext";
 import { sucursalesService } from "@/frontend/services/sucursales.service";
 import { pedidosService } from "@/frontend/services/pedidos.service";
@@ -73,6 +74,7 @@ function saludar() {
 export default function DashboardAdminScreen() {
   const { token, usuario } = useAuth();
   const { open: openNavbar } = useNavbar();
+  const { fs } = useResponsive();
   const [metricas, setMetricas] = useState<Metricas | null>(null);
   const [cargando, setCargando] = useState(true);
   const [refrescando, setRefrescando] = useState(false);

@@ -10,9 +10,11 @@ import { Caffiq } from "@/frontend/constants/theme";
 import { useAuth } from "@/frontend/context/AuthContext";
 import { authService } from "@/frontend/services/auth.service";
 import { SelectorPais, PAISES, type Pais } from "@/frontend/components/SelectorPais";
+import { useResponsive } from "@/frontend/hooks/use-responsive";
 
 export default function AgregarTelefonoScreen() {
   const { token, usuario } = useAuth();
+  const { fs } = useResponsive();
   const { rol } = useLocalSearchParams<{ rol?: string }>();
 
   const [pais,    setPais]    = useState<Pais>(PAISES[0]);

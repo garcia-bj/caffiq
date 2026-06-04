@@ -11,12 +11,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavbar } from "@/frontend/context/NavbarContext";
 import { useAuth } from "@/frontend/context/AuthContext";
 import { productosService, type ProductoPublico } from "@/frontend/services/productos.service";
+import { useResponsive } from "@/frontend/hooks/use-responsive";
 import { subirImagenCloudinary } from "@/frontend/services/cloudinary";
 
 export default function EditarProducto() {
   const router = useRouter();
   const { productoId, cafeteria_id: cafParam } = useLocalSearchParams<{ productoId: string; cafeteria_id?: string }>();
   const { token, usuario } = useAuth();
+  const { fs } = useResponsive();
   const cafeteriaId = cafParam ?? usuario?.cafeteria_id ?? "";
 
   const { open: openNavbar } = useNavbar();

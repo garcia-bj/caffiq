@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { FlatList, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Caffiq } from "@/frontend/constants/theme";
+import { useResponsive } from "@/frontend/hooks/use-responsive";
 
 export interface Pais { bandera: string; nombre: string; codigo: string; }
 
@@ -35,6 +36,7 @@ export const PAISES: Pais[] = [
 ];
 
 export function SelectorPais({ pais, onSelect }: { pais: Pais; onSelect: (p: Pais) => void }) {
+  const { fs } = useResponsive();
   const [open, setOpen]     = useState(false);
   const [buscar, setBuscar] = useState("");
 

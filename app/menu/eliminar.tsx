@@ -10,9 +10,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/frontend/context/AuthContext";
 import { sucursalesService, type SucursalPublica } from "@/frontend/services/sucursales.service";
 import { productosService, type ProductoPublico } from "@/frontend/services/productos.service";
+import { useResponsive } from "@/frontend/hooks/use-responsive";
 
 export default function EliminarProductoMenu() {
   const { token, usuario } = useAuth();
+  const { fs } = useResponsive();
   const { open: openNavbar } = useNavbar();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [sucursales, setSucursales] = useState<SucursalPublica[]>([]);

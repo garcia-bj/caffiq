@@ -9,6 +9,7 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/frontend/context/AuthContext";
 import { cafeteriasService, type CafeteriaPublica } from "@/frontend/services/cafeterias.service";
+import { useResponsive } from "@/frontend/hooks/use-responsive";
 
 const { width: SW } = Dimensions.get("window");
 
@@ -138,6 +139,7 @@ function CafeCard({ item, index }: { item: CafeteriaPublica; index: number }) {
 ───────────────────────────────────────────────────────── */
 export default function HomeScreen() {
   const { token, usuario } = useAuth();
+  const { fs, wp } = useResponsive();
   const [cafeterias, setCafeterias] = useState<CafeteriaPublica[]>([]);
   const [filtered,   setFiltered]   = useState<CafeteriaPublica[]>([]);
   const [loading,    setLoading]    = useState(true);

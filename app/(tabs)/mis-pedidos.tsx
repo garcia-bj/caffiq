@@ -7,6 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@/frontend/context/AuthContext";
 import { pedidosService, type Pedido, type EstadoPedido } from "@/frontend/services/pedidos.service";
+import { useResponsive } from "@/frontend/hooks/use-responsive";
 
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -204,6 +205,7 @@ function PedidoCard({ pedido }: { pedido: Pedido }) {
 
 export default function MisPedidosScreen() {
   const { token } = useAuth();
+  const { fs } = useResponsive();
   const [tabActiva, setTabActiva] = useState<TabKey>("pendiente");
   const [pedidos, setPedidos] = useState<Record<TabKey, Pedido[]>>({ pendiente: [], aprobado: [], rechazado: [] });
   const [cargando, setCargando] = useState(true);
