@@ -174,6 +174,11 @@ export default function ModificarProductoMenu() {
                           <Text style={styles.estadoBadgeText}>{badge.label}</Text>
                         </View>
                       )}
+                      {catActiva === "Todas" && (
+                        <View style={styles.catBadge}>
+                          <Text style={styles.catBadgeText}>{p.categoria || "General"}</Text>
+                        </View>
+                      )}
                       <View style={styles.cardInfo}>
                         <Text style={styles.cardNombre} numberOfLines={2}>{p.nombre}</Text>
                         <Text style={styles.cardPrecio}>Bs. {p.precio?.toFixed(2)}</Text>
@@ -225,6 +230,8 @@ const styles = StyleSheet.create({
   cardImage: { width: "100%", height: 110 },
   estadoBadge: { position: "absolute", top: 8, right: 8, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
   estadoBadgeText: { color: "#fff", fontSize: 10, fontWeight: "700" },
+  catBadge: { position: "absolute", bottom: 56, left: 6, backgroundColor: "#0D5A52", borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+  catBadgeText: { color: "#fff", fontSize: 9, fontWeight: "700" },
   cardInfo: { padding: 8 },
   cardNombre: { fontSize: 12, fontWeight: "600", color: "#2C1819", marginBottom: 2 },
   cardPrecio: { fontSize: 13, fontWeight: "700", color: "#541A1A" },

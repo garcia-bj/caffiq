@@ -23,7 +23,7 @@ export class SupabaseProductoRepository implements IProductoRepository {
     // Traer productos activos de esas sucursales via tabla intermedia
     const { data, error } = await supabaseAdmin
       .from(SUCURSAL_PROD)
-      .select(`Producto ( id_producto, nom_producto, descripcion, precio, stock, estado, imagen_producto )`)
+      .select(`Producto ( id_producto, nom_producto, descripcion, precio, stock, estado, imagen_producto, categoria )`)
       .in("id_sucursal", ids);
 
     if (error) throw new Error(error.message);
@@ -36,7 +36,7 @@ export class SupabaseProductoRepository implements IProductoRepository {
   async listarPorSucursal(sucursal_id: string, todos: boolean): Promise<ProductoEntity[]> {
     const { data, error } = await supabaseAdmin
       .from(SUCURSAL_PROD)
-      .select(`Producto ( id_producto, nom_producto, descripcion, precio, stock, estado, imagen_producto )`)
+      .select(`Producto ( id_producto, nom_producto, descripcion, precio, stock, estado, imagen_producto, categoria )`)
       .eq("id_sucursal", sucursal_id);
 
     if (error) throw new Error(error.message);

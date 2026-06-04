@@ -8,7 +8,11 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "backend:dev": "npm run dev --prefix src/backend",
+    "backend:build": "npm run build --prefix src/backend",
+    "backend:start": "npm start --prefix src/backend",
+    "deploy:check": "npx tsc --noEmit --pretty --project src/backend/tsconfig.json"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

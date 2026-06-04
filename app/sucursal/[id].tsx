@@ -59,10 +59,12 @@ function ProductoCard({
   item,
   cartQuantity,
   onAgregar,
+  showCategory = false,
 }: {
   item: ProductoPublico;
   cartQuantity: number;
   onAgregar: (producto: ProductoPublico) => void;
+  showCategory?: boolean;
 }) {
   const { fs, hp } = useResponsive();
   const stockLimite = item.stock !== null && item.stock !== undefined;
@@ -103,9 +105,11 @@ function ProductoCard({
       </View>
 
       <View style={styles.productoInfo}>
-        <View style={styles.catBadge}>
-          <Text style={styles.catBadgeText}>{item.categoria || "General"}</Text>
-        </View>
+        {showCategory && (
+          <View style={styles.catBadge}>
+            <Text style={styles.catBadgeText}>{item.categoria || "General"}</Text>
+          </View>
+        )}
         <Text style={styles.productoNombre} numberOfLines={2}>{item.nombre}</Text>
         {item.descripcion ? (
           <Text style={styles.productoDesc} numberOfLines={2}>{item.descripcion}</Text>
@@ -241,6 +245,7 @@ export default function SucursalMenuScreen() {
       item={item}
       cartQuantity={getCartQuantity(item.id)}
       onAgregar={handleAgregar}
+      showCategory={catActiva === "Todas"}
     />
   );
 
