@@ -284,20 +284,34 @@ export default function SucursalMenuScreen() {
       {/* ── Contenido ─────────────────────────────────────────────── */}
       {estadoSucursal === null ? (
         <View style={styles.cerradoContainer}>
-          <Text style={[styles.cerradoIcon, { fontSize: fs(40) }]}>🔒</Text>
-          <Text style={styles.cerradoTitulo}>Sucursal cerrada</Text>
+          <View style={styles.cerradoIconWrap}>
+            <Ionicons name="lock-closed" size={fs(44)} color={D.accent} />
+          </View>
+          <Text style={[styles.cerradoTitulo, { fontSize: fs(20) }]}>Fuera de horario</Text>
           <Text style={styles.cerradoDesc}>
             Esta sucursal no está recibiendo pedidos en este momento.
           </Text>
           {horario_apertura && horario_cierre ? (
-            <View style={styles.cerradoHorario}>
-              <Ionicons name="time-outline" size={14} color={D.secondary} />
-              <Text style={styles.cerradoHorarioTxt}>
-                Horario: {horario_apertura} – {horario_cierre}
-              </Text>
+            <View style={styles.cerradoHorarioBox}>
+              <View style={styles.cerradoHoraItem}>
+                <Ionicons name="sunny-outline" size={18} color="#B45309" />
+                <View>
+                  <Text style={styles.cerradoHoraLabel}>Apertura</Text>
+                  <Text style={styles.cerradoHoraValor}>{horario_apertura}</Text>
+                </View>
+              </View>
+              <View style={styles.cerradoHoraSep} />
+              <View style={styles.cerradoHoraItem}>
+                <Ionicons name="moon-outline" size={18} color="#1E3A5F" />
+                <View>
+                  <Text style={styles.cerradoHoraLabel}>Cierre</Text>
+                  <Text style={styles.cerradoHoraValor}>{horario_cierre}</Text>
+                </View>
+              </View>
             </View>
           ) : null}
           <TouchableOpacity style={styles.retryBtn} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={16} color="#fff" />
             <Text style={styles.retryText}>Volver</Text>
           </TouchableOpacity>
         </View>
@@ -464,9 +478,14 @@ const styles = StyleSheet.create({
   addBtnBadgeText: { fontSize: 8, fontWeight: "800", color: "#fff" },
 
   cerradoContainer: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, paddingHorizontal: 32 },
-  cerradoIcon:      { fontSize: 56 },
+  cerradoIconWrap: { width: 96, height: 96, borderRadius: 28, backgroundColor: D.accentBg, alignItems: "center", justifyContent: "center", marginBottom: 4 },
   cerradoTitulo:    { fontSize: 22, fontWeight: "800", color: D.primary, textAlign: "center" },
   cerradoDesc:      { fontSize: 14, color: D.secondary, textAlign: "center", lineHeight: 20 },
+  cerradoHorarioBox: { flexDirection: "row", alignItems: "center", gap: 16, backgroundColor: "#FFFBF0", borderRadius: 16, borderWidth: 1.5, borderColor: "#FDE68A", paddingHorizontal: 24, paddingVertical: 16, marginTop: 4 },
+  cerradoHoraItem: { flexDirection: "row", alignItems: "center", gap: 10 },
+  cerradoHoraLabel: { fontSize: 11, color: D.secondary, fontWeight: "600" },
+  cerradoHoraValor: { fontSize: 18, fontWeight: "800", color: D.primary },
+  cerradoHoraSep: { width: 1, height: 40, backgroundColor: "#FDE68A" },
   cerradoHorario:   { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: D.surface, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
   cerradoHorarioTxt:{ fontSize: 13, color: D.secondary, fontWeight: "600" },
   warnBanner: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#FFF8E1", paddingHorizontal: 16, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: "#FFE082" },

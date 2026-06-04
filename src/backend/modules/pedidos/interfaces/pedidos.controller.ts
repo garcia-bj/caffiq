@@ -20,6 +20,28 @@ export const pedidosController = {
       if (!total || total <= 0)          throw new AppError("El total debe ser mayor a 0", 400);
       if (!["llevar", "local"].includes(tipo_pedido)) throw new AppError("tipo_pedido debe ser 'llevar' o 'local'", 400);
 
+      // Validar horario de atención de la sucursal
+      const { data: sucursal } = await supabaseAdmin
+        .from("Sucursal")
+        .select("horario_apertura, horario_cierre")
+        .eq("id", sucursal_id)
+        .maybeSingle();
+
+      if (sucursal?.horario_apertura && sucursal?.horario_cierre) {
+        const now = new Date();
+        const nowMin = now.getHours() * 60 + now.getMinutes();
+        const [ah, am] = (sucursal.horario_apertura as string).split(":").map(Number);
+        const [ch, cm] = (sucursal.horario_cierre as string).split(":").map(Number);
+        const aMin = ah * 60 + am;
+        const cMin = ch * 60 + cm;
+        if (nowMin < aMin || nowMin >= cMin) {
+          throw new AppError(
+            `La sucursal está fuera del horario de atención (${sucursal.horario_apertura} – ${sucursal.horario_cierre}). Intenta de nuevo en horario laboral.`,
+            400,
+          );
+        }
+      }
+
       const pedido = await repo.crear({ cliente_id, cafeteria_id, sucursal_id, items, total, tipo_pedido: tipo_pedido as TipoPedido, comprobante_url, hora_recogida });
       res.status(201).json({ pedido });
 
