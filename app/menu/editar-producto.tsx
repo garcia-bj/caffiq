@@ -33,6 +33,8 @@ export default function EditarProducto() {
   const [stock, setStock] = useState("");
   const [imagen, setImagen] = useState<string | null>(null);
   const [suspendido, setSuspendido] = useState(false);
+  const [categoria, setCategoria] = useState("Café");
+  const CATS = ["Café", "Bebidas", "Repostería", "Salados"];
 
   useEffect(() => {
     cargarProducto();
@@ -50,6 +52,7 @@ export default function EditarProducto() {
       setStock(String(datos.stock ?? ""));
       setImagen(datos.imagen_url ?? null);
       setSuspendido(!datos.disponible);
+      setCategoria(datos.categoria ?? "Café");
     } catch {
       Alert.alert("Error", "No se pudo cargar el producto");
     } finally {
@@ -113,6 +116,7 @@ export default function EditarProducto() {
         stock:           stock ? Number(stock) : 0,
         imagen_producto: urlImagen || undefined,
         estado:          !suspendido,
+        categoria,
       });
 
       Alert.alert("✅ Éxito", "Producto actualizado correctamente.", [
@@ -184,6 +188,22 @@ export default function EditarProducto() {
             value={descripcion} onChangeText={setDescripcion}
             multiline numberOfLines={4} textAlignVertical="top"
           />
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Categoría</Text>
+          <View style={styles.catRow}>
+            {CATS.map((cat) => (
+              <TouchableOpacity
+                key={cat}
+                style={[styles.catChip, categoria === cat && styles.catChipSel]}
+                onPress={() => setCategoria(cat)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.catChipText, categoria === cat && styles.catChipTextSel]}>{cat}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
 
         <View style={styles.rowGroup}>
@@ -296,6 +316,11 @@ const styles = StyleSheet.create({
   inputGroup: { marginBottom: 14 },
   rowGroup: { flexDirection: "row", marginBottom: 14 },
   label: { fontSize: 13, color: "#2C1819", marginBottom: 5, fontWeight: "500" },
+  catRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
+  catChip: { borderRadius: 20, borderWidth: 1.5, borderColor: "#C5D9CE", paddingVertical: 8, paddingHorizontal: 18, backgroundColor: "#fff" },
+  catChipSel: { borderColor: "#0D5A52", backgroundColor: "#0D5A52" },
+  catChipText: { fontSize: 13, fontWeight: "600", color: "#6FA58B" },
+  catChipTextSel: { color: "#fff" },
   input: { backgroundColor: "#6FA58B", borderRadius: 8, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, color: "#fff" },
   inputMultiline: { height: 100, paddingTop: 12 },
   estadoRow: { flexDirection: "row", alignItems: "center", gap: 20, marginBottom: 10 },

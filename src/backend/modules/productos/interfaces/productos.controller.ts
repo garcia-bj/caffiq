@@ -45,7 +45,7 @@ export const productosController = {
   async crear(req: Request, res: Response, next: NextFunction) {
     try {
       const { cafeteria_id } = req.params;
-      const { id_sucursal, nom_producto, descripcion, precio, stock, imagen_producto } = req.body;
+      const { id_sucursal, nom_producto, descripcion, precio, stock, imagen_producto, categoria } = req.body;
 
       if (!id_sucursal || !nom_producto || precio === undefined) {
         throw new AppError("id_sucursal, nom_producto y precio son requeridos", 400);
@@ -58,6 +58,7 @@ export const productosController = {
         precio:  Number(precio),
         stock:   stock ? Number(stock) : undefined,
         imagen_producto,
+        categoria,
       });
 
       res.status(201).json({ producto: toPublico(producto, cafeteria_id) });
@@ -68,7 +69,7 @@ export const productosController = {
   async modificar(req: Request, res: Response, next: NextFunction) {
     try {
       const { cafeteria_id, producto_id } = req.params;
-      const { nom_producto, descripcion, precio, stock, imagen_producto, estado } = req.body;
+      const { nom_producto, descripcion, precio, stock, imagen_producto, estado, categoria } = req.body;
 
       const producto = await modificar.execute(producto_id, {
         nom_producto,
@@ -77,6 +78,7 @@ export const productosController = {
         stock:           stock     !== undefined ? Number(stock)  : undefined,
         imagen_producto: imagen_producto ?? undefined,
         estado:          estado    !== undefined ? Boolean(estado) : undefined,
+        categoria,
       });
 
       res.status(200).json({ producto: toPublico(producto, cafeteria_id) });
