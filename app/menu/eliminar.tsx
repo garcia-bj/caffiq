@@ -24,6 +24,8 @@ export default function EliminarProductoMenu() {
   const [sucursalId, setSucursalId] = useState<string | null>(null);
   const [sucursalNombre, setSucursalNombre] = useState<string>("");
   const [productos, setProductos] = useState<ProductoPublico[]>([]);
+  const [catActiva, setCatActiva] = useState("Todas");
+  const CATS = ["Todas", "Café", "Bebidas", "Repostería", "Salados"];
   const [modalVisible, setModalVisible] = useState(false);
   const [productoAEliminar, setProductoAEliminar] = useState<ProductoPublico | null>(null);
 
@@ -132,6 +134,22 @@ export default function EliminarProductoMenu() {
         {sucursalId && (
           <>
             <Text style={styles.sectionTitle}>Menú de ({sucursalNombre})</Text>
+
+            <View style={styles.catRow}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catScroll}>
+                {CATS.map((cat) => (
+                  <TouchableOpacity
+                    key={cat}
+                    style={[styles.catChip, catActiva === cat && styles.catChipSel]}
+                    onPress={() => setCatActiva(cat)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={[styles.catChipText, catActiva === cat && styles.catChipTextSel]}>{cat}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+
             {cargandoProductos ? (
               <ActivityIndicator size="large" color="#0D5A52" style={{ marginTop: 20 }} />
             ) : productos.length === 0 ? (
@@ -140,7 +158,7 @@ export default function EliminarProductoMenu() {
               </Text>
             ) : (
               <View style={styles.grid}>
-                {productos.map((p) => (
+                {(catActiva === "Todas" ? productos : productos.filter((p) => p.categoria === catActiva)).map((p) => (
                   <View key={p.id} style={styles.card}>
                     <Image source={{ uri: p.imagen_url ?? undefined }} style={styles.cardImage} />
                     <TouchableOpacity style={styles.deleteBtn} onPress={() => abrirModal(p)}>
@@ -206,6 +224,12 @@ const styles = StyleSheet.create({
   scrollContent: { padding: 20, paddingBottom: 84 },
   pageTitle: { fontSize: 22, fontWeight: "700", color: "#2C1819", marginBottom: 16, fontStyle: "italic", textAlign: "center" },
   sectionTitle: { fontSize: 17, fontWeight: "700", color: "#0D5A52", marginBottom: 12 },
+  catRow: { marginBottom: 12 },
+  catScroll: { gap: 8 },
+  catChip: { borderRadius: 20, borderWidth: 1.5, borderColor: "#C5D9CE", paddingVertical: 6, paddingHorizontal: 16, backgroundColor: "#fff" },
+  catChipSel: { borderColor: "#0D5A52", backgroundColor: "#0D5A52" },
+  catChipText: { fontSize: 12, fontWeight: "600", color: "#6FA58B" },
+  catChipTextSel: { color: "#fff" },
   inputGroup: { marginBottom: 16 },
   dropdown: { backgroundColor: "#6FA58B", borderRadius: 8, paddingHorizontal: 14, paddingVertical: 13, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   dropdownText: { color: "#fff", fontSize: 14 },
