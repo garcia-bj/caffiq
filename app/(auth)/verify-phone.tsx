@@ -22,7 +22,7 @@ const CODE_LENGTH = 6;
 const RESEND_SECONDS = 60;
 
 export default function VerifyPhoneScreen() {
-  const { usuario_id, telefono, from_google } = useLocalSearchParams<{ usuario_id: string; telefono: string; from_google?: string }>();
+  const { usuario_id, telefono, from_google, from_perfil } = useLocalSearchParams<{ usuario_id: string; telefono: string; from_google?: string; from_perfil?: string }>();
   const { token } = useAuth();
   const { setSession } = useAuth();
   const { fs } = useResponsive();
@@ -78,7 +78,9 @@ export default function VerifyPhoneScreen() {
       const { token: newToken, usuario } = await authService.verifyPhone(usuario_id!, fullCode);
       await setSession(newToken, usuario);
 
-      if (from_google === "1" && usuario.rol === "admin" && !usuario.cafeteria_id) {
+      if (from_perfil === "1") {
+        router.replace("/(tabs)/perfil" as any);
+      } else if (from_google === "1" && usuario.rol === "admin" && !usuario.cafeteria_id) {
         router.replace("/auth/setup-cafeteria" as any);
       } else {
         router.replace("/(tabs)");

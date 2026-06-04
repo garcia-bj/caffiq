@@ -30,7 +30,7 @@ export class SupabaseProductoRepository implements IProductoRepository {
 
     return (data ?? [])
       .map((sp: any) => sp.Producto)
-      .filter((p: any) => p?.estado === true) as ProductoEntity[];
+      .filter((p: any) => p?.estado === true && (p.stock === null || p.stock > 0)) as ProductoEntity[];
   }
 
   async listarPorSucursal(sucursal_id: string, todos: boolean): Promise<ProductoEntity[]> {
@@ -43,7 +43,7 @@ export class SupabaseProductoRepository implements IProductoRepository {
 
     return (data ?? [])
       .map((sp: any) => sp.Producto)
-      .filter((p: any): p is ProductoEntity => p != null && (todos || p.estado === true));
+      .filter((p: any): p is ProductoEntity => p != null && (todos || p.estado === true) && (p.stock === null || p.stock > 0));
   }
 
   async buscarPorId(id: string): Promise<ProductoEntity | null> {

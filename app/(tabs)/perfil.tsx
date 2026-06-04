@@ -86,12 +86,29 @@ export default function PerfilScreen() {
 
   const handleSave = async () => {
     if (!nomCompleto.trim()) { Alert.alert("Error", "El nombre no puede estar vacío."); return; }
-    if (!token) return;
+    if (!token || !usuario) return;
+
+    const telefonoCambiado = telefono.trim() !== (usuario.num_telefono ?? "");
+
     try {
       setSaving(true);
       const updated = await authService.updateMe(token, { nom_completo: nomCompleto.trim(), num_telefono: telefono.trim() });
       if (setUsuario && updated.usuario) setUsuario(updated.usuario);
       setEditMode(false); Keyboard.dismiss();
+
+      if (telefonoCambiado && telefono.trim()) {
+        await authService.resendOtp(usuario.id);
+        router.push({
+          pathname: "/(auth)/verify-phone",
+          params: {
+            usuario_id: usuario.id,
+            telefono: telefono.trim(),
+            from_perfil: "1",
+          },
+        } as any);
+        return;
+      }
+
       Alert.alert("Guardado", "Tu perfil fue actualizado.");
     } catch (e: unknown) {
       Alert.alert("Error", e instanceof Error ? e.message : "Error al guardar");
